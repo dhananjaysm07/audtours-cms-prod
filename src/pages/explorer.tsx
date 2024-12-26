@@ -3,7 +3,6 @@ import AudioPlayer from '@/components/audio-player';
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
@@ -35,8 +34,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { FolderItemProps, FolderKindSpecific } from '@/types';
 
-const getBreadcrumb = (currentPath) => {
+interface PathSegment {
+  itemId: string;
+  name: string;
+}
+
+const getBreadcrumb = (
+  currentPath: PathSegment[],
+  navigateTo: (itemId: string) => void
+) => {
   return (
     <Breadcrumb>
       <BreadcrumbList>
@@ -46,9 +54,13 @@ const getBreadcrumb = (currentPath) => {
               <BreadcrumbPage>{item.name}</BreadcrumbPage>
             ) : (
               <>
-                <BreadcrumbLink href={`#${item.itemId}`}>
+                <button
+                  // variant="ghost"
+                  className="hover:text-foreground"
+                  onClick={() => navigateTo(item.itemId)}
+                >
                   {item.name}
-                </BreadcrumbLink>
+                </button>
                 {index < currentPath.length - 1 && <BreadcrumbSeparator />}
               </>
             )}
@@ -234,7 +246,7 @@ const ContentExplorer = () => {
   return (
     <div className="flex flex-col bg-white p-4 rounded-lg gap-4 flex-1">
       <div className="bg-neutral-100 w-full rounded-md p-2">
-        {getBreadcrumb(currentPath)}
+        {getBreadcrumb(currentPath, navigateTo)}
       </div>
 
       <div className="grow w-full rounded-lg relative">
@@ -287,13 +299,7 @@ const ContentExplorer = () => {
 };
 
 const FolderView = () => {
-  const {
-    isLoading,
-    sortedItems,
-    navigateTo,
-    toggleItemSelection,
-    selectedItems,
-  } = useContentStore();
+  const { isLoading, sortedItems } = useContentStore();
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -316,14 +322,6 @@ const FolderView = () => {
     event.preventDefault();
   };
 
-  const handleItemClick = (item: FolderItemProps) => {
-    if (item.kind === 'folder') {
-      navigateTo(item.itemId);
-    } else {
-      toggleItemSelection(item.itemId);
-    }
-  };
-
   return (
     <FlexiContainer
       onDrop={handleDrop}
@@ -337,13 +335,8 @@ const FolderView = () => {
             <Loader className="h-10 w-10 text-neutral-400/90 animate-spin-ease" />
           </div>
         ) : (
-          sortedItems.map((item) => (
-            <FolderItem
-              {...item}
-              key={item.itemId}
-              onClick={() => handleItemClick(item)}
-              isSelected={selectedItems.includes(item.itemId)}
-            />
+          sortedItems.map((item: FolderItemProps) => (
+            <FolderItem {...item} key={item.itemId} />
           ))
         )}
       </div>

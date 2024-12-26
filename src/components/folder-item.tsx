@@ -32,7 +32,7 @@ import { Label } from '@/components/ui/label';
 import { FileKind, FolderItemKind, FolderItemProps } from '@/types';
 import ImageViewer from './image-viewer';
 import PositionDialog from './position-dialog';
-import { toast } from 'sonner';
+
 import { useContentStore } from '@/store/useContentStore';
 
 const getFolderItemIcon = (
@@ -86,20 +86,24 @@ const FolderItem: React.FC<FolderItemProps> = ({
   itemId,
   name,
   kind,
-
   fileKind,
   folderKind,
   audioMetadata,
   imageMetadata,
 }) => {
-  const [isSelected, setIsSelected] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPropertiesDialogOpen, setIsPropertiesDialogOpen] = useState(false);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [isPositionDialogOpen, setIsPositionDialogOpen] = useState(false);
   const [newItemName, setNewItemName] = useState(name);
-  const { navigateTo } = useContentStore();
+  const {
+    navigateTo,
+    selectedItems,
+    toggleItemSelection,
+    renameItem,
+    deleteItem,
+  } = useContentStore();
 
   const handleDoubleClick = () => {
     if (kind === 'folder') {
@@ -112,37 +116,26 @@ const FolderItem: React.FC<FolderItemProps> = ({
     }
   };
 
-  const handleRename = () => {
-    console.log('Renamed to:', newItemName);
-    setIsRenameDialogOpen(false);
-    toast.info('Renaming item');
-  };
-
-  const handleDelete = () => {
-    console.log('Item deleted:', itemId);
-    setIsDeleteDialogOpen(false);
-    toast('Item deleted successfully!');
-  };
-
-  const handleOpen = () => {
-    handleDoubleClick();
-  };
+  const handleOpen = handleDoubleClick;
+  const isItemSelected = selectedItems.includes(itemId);
 
   return (
     <>
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
-            onClick={() => setIsSelected(true)}
+            onClick={() => toggleItemSelection(itemId)}
             onDoubleClick={handleDoubleClick}
             className={cn(
               'h-28 aspect-square flex flex-col items-center focus-visible:outline hover:bg-blue-50 justify-center shrink-0 rounded-lg',
-              isSelected && 'bg-blue-50 outline outline-blue-200'
+              isItemSelected && 'bg-blue-50 outline outline-blue-200'
             )}
             tabIndex={0}
           >
             {getFolderItemIcon(kind, fileKind, imageMetadata)}
-            <span className="text-sm">{name}</span>
+            <div className="flex justify-center">
+              <span className="text-sm truncate max-w-24">{name}</span>
+            </div>
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent className="min-w-40">
@@ -234,7 +227,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
               variant={'ghost'}
               className="w-full"
               type="submit"
-              onClick={handleRename}
+              onClick={() => renameItem(itemId, newItemName)}
             >
               Rename
             </Button>
@@ -263,7 +256,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
             <Button
               className="w-full"
               variant="destructive"
-              onClick={handleDelete}
+              onClick={() => deleteItem(itemId)}
             >
               Delete
             </Button>

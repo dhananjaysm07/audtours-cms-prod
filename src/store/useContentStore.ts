@@ -108,7 +108,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
   isAudioAvailable: true,
   isImageAvailable: true,
   isLoading: false,
-  currentPath: [{ itemId: 'root', name: 'Root' }],
+  currentPath: [{ itemId: '', name: 'Home' }],
   sortingTypes: [
     { value: 'name', label: 'Name' },
     { value: 'date', label: 'Date' },
