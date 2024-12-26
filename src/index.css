@@ -3,19 +3,17 @@
 @tailwind utilities;
 
 :root {
-  font-family: Jost, Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: QuickSand, Jost, Inter, system-ui, Avenir, Helvetica, Arial,
+    sans-serif;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-@media (prefers-color-scheme: light) {
+/* @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
     background-color: #ffffff;
@@ -26,16 +24,16 @@
   button {
     background-color: #f9f9f9;
   }
-}
+} */
 @layer base {
   :root {
     --background: hsl(0, 0%, 100%);
     --foreground: hsl(240, 10%, 10%);
     --card: hsl(0, 0%, 100%);
-    --card-foreground: hsl(240, 10%, 3.9%);
+    --card-foreground: hsl(240, 10%, 18.9%);
     --popover: hsl(0, 0%, 100%);
     --popover-foreground: hsl(240, 10%, 3.9%);
-    --primary: hsl(240, 5.9%, 10%);
+    --primary: hsl(240, 38%, 43%);
     --primary-foreground: hsl(0, 0%, 98%);
     --secondary: hsl(240, 4.8%, 95.9%);
     --secondary-foreground: hsl(240, 5.9%, 10%);

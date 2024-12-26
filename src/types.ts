@@ -1,12 +1,14 @@
-export const FOLDER_TYPES = {
+export const FOLDER_ITEM_TYPE = {
   FOLDER: 'folder',
   FILE: 'file',
   ROOT: 'root',
 } as const;
+
 export const FILE_KINDS = {
   AUDIO: 'audio',
   IMAGE: 'image',
 } as const;
+
 export const FOLDER_KINDS = {
   MAP: 'map',
   LOCATION: 'location',
@@ -14,30 +16,43 @@ export const FOLDER_KINDS = {
   STOP: 'stop',
 } as const;
 
-export type FolderKind = keyof typeof FOLDER_TYPES;
-export type FileKind = keyof typeof FILE_KINDS;
+export type FolderItemKind = 'folder' | 'file' | 'root';
+
+// export type FolderItemKind = keyof typeof FOLDER_ITEM_TYPE;
+// export type FileKind = keyof typeof FILE_KINDS;
+export type FileKind = 'audio' | 'image';
 export type FolderKindSpecific = keyof typeof FOLDER_KINDS;
 
-export interface FolderItem {
-  id: string;
+export interface FolderItemProps {
+  itemId: string;
   name: string;
-  kind: FolderKind; // 'folder', 'file', or 'root'
+  kind: FolderItemKind; // 'folder', 'file', or 'root'
   parentId: string | null;
   fileKind?: FileKind; // Optional: 'audio' or 'image' if it's a file
   folderKind?: FolderKindSpecific; // Optional: Specific folder type ('map', 'location', etc.)
+  audioMetadata?: {
+    duration: number;
+    size: string;
+    createdAt: string;
+  };
+  imageMetadata?: {
+    url: string;
+    position: number;
+    createdAt: string;
+  };
 }
 
 export interface FolderState {
-  items: FolderItem[];
+  items: FolderItemProps[];
   selectedItems: string[];
   currentFolderId: string | null;
   currentFolderName: string;
 }
 
 export interface FolderActions {
-  addItem: (item: FolderItem) => void;
+  addItem: (item: FolderItemProps) => void;
   removeItem: (id: string) => void;
-  updateItem: (id: string, updates: Partial<FolderItem>) => void;
+  updateItem: (id: string, updates: Partial<FolderItemProps>) => void;
   moveItem: (id: string, newParentId: string) => void;
   setSelectedId: (id: string | null) => void;
   toggleExpanded: (id: string) => void;
