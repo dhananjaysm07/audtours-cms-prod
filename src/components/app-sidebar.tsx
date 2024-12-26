@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/sidebar';
 import sidebarOptions from '@/pages/sidebar-config';
 import { useLocation } from 'react-router';
-import { Button } from './ui/button';
+import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 
 function AppSidebar() {

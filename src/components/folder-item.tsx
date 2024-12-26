@@ -17,8 +17,8 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from './ui/context-menu';
-import { Button } from './ui/button';
+} from '@/components/ui/context-menu';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -26,12 +26,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './ui/dialog';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { FileKind, FolderItemKind, FolderItemProps } from '@/types';
 import ImageViewer from './image-viewer';
 import PositionDialog from './position-dialog';
+import { toast } from 'sonner';
+import { useContentStore } from '@/store/useContentStore';
 
 const getFolderItemIcon = (
   kind: FolderItemKind,
@@ -55,7 +57,7 @@ const getFolderItemIcon = (
             alt="Thumbnail"
             width={56}
             height={56}
-            className="aspect-square mb-2 object-cover rounded-xl cursor-pointer"
+            className="aspect-square select-none mb-2 object-cover rounded-xl cursor-pointer"
             loading="lazy"
           />
         );
@@ -97,9 +99,11 @@ const FolderItem: React.FC<FolderItemProps> = ({
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [isPositionDialogOpen, setIsPositionDialogOpen] = useState(false);
   const [newItemName, setNewItemName] = useState(name);
+  const { navigateTo } = useContentStore();
 
   const handleDoubleClick = () => {
     if (kind === 'folder') {
+      navigateTo(itemId);
       console.log('Opening folder:', itemId);
     } else if (kind === 'file' && fileKind === 'image') {
       setIsImageViewerOpen(true);
@@ -111,11 +115,13 @@ const FolderItem: React.FC<FolderItemProps> = ({
   const handleRename = () => {
     console.log('Renamed to:', newItemName);
     setIsRenameDialogOpen(false);
+    toast.info('Renaming item');
   };
 
   const handleDelete = () => {
     console.log('Item deleted:', itemId);
     setIsDeleteDialogOpen(false);
+    toast('Item deleted successfully!');
   };
 
   const handleOpen = () => {
@@ -130,9 +136,10 @@ const FolderItem: React.FC<FolderItemProps> = ({
             onClick={() => setIsSelected(true)}
             onDoubleClick={handleDoubleClick}
             className={cn(
-              'h-28 aspect-square flex flex-col items-center hover:bg-blue-50 justify-center shrink-0 rounded-lg',
+              'h-28 aspect-square flex flex-col items-center focus-visible:outline hover:bg-blue-50 justify-center shrink-0 rounded-lg',
               isSelected && 'bg-blue-50 outline outline-blue-200'
             )}
+            tabIndex={0}
           >
             {getFolderItemIcon(kind, fileKind, imageMetadata)}
             <span className="text-sm">{name}</span>

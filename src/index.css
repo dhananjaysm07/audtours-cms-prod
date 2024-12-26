@@ -13,18 +13,6 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* @media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-} */
 @layer base {
   :root {
     --background: hsl(0, 0%, 100%);
@@ -33,7 +21,7 @@
     --card-foreground: hsl(240, 10%, 18.9%);
     --popover: hsl(0, 0%, 100%);
     --popover-foreground: hsl(240, 10%, 3.9%);
-    --primary: hsl(240, 38%, 43%);
+    --primary: hsl(240, 36%, 52%);
     --primary-foreground: hsl(0, 0%, 98%);
     --secondary: hsl(240, 4.8%, 95.9%);
     --secondary-foreground: hsl(240, 5.9%, 10%);
@@ -45,7 +33,7 @@
     --destructive-foreground: hsl(0, 0%, 98%);
     --border: hsl(240, 5.9%, 90%);
     --input: hsl(240, 5.9%, 90%);
-    --ring: hsl(240, 10%, 3.9%);
+    --ring: hsl(240, 56%, 59%);
     --chart-1: hsl(12, 76%, 61%);
     --chart-2: hsl(173, 58%, 39%);
     --chart-3: hsl(197, 37%, 24%);

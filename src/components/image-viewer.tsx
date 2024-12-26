@@ -1,7 +1,7 @@
 import React from 'react';
-import { Dialog, DialogContent } from './ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { Button } from './ui/button';
+import { Button } from '@/components/ui/button';
 
 interface ImageViewerProps {
   isOpen: boolean;

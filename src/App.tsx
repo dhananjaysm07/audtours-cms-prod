@@ -5,11 +5,13 @@ import DashboardLayout from './dashboard-layout';
 const Home = React.lazy(() => import('./pages/home'));
 const Explorer = React.lazy(() => import('./pages/explorer'));
 const Codes = React.lazy(() => import('./pages/codes'));
+const SignIn = React.lazy(() => import('./pages/sign-in'));
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/sign-in" element={<SignIn />} />
         <Route path="/" element={<DashboardLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/explorer/*" element={<Explorer />} />

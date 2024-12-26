@@ -18,11 +18,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -71,6 +67,172 @@ interface User {
 
 const Spinner = () => <Loader2 className="h-4 w-4 animate-spin" />;
 
+const mockCodes: Code[] = [
+  {
+    id: '1',
+    code: 'MUSEUM2024',
+    startDate: '2024-03-01',
+    expiryDate: '2024-12-31',
+    accessCount: 5,
+    maxAccess: 10,
+    location: 'Germany > Museum',
+    status: 'active',
+  },
+  {
+    id: '2',
+    code: 'GALLERY2024',
+    startDate: '2024-02-15',
+    expiryDate: '2024-11-30',
+    accessCount: 8,
+    maxAccess: 15,
+    location: 'France > Gallery',
+    status: 'active',
+  },
+  {
+    id: '3',
+    code: 'EXHIBIT2024',
+    startDate: '2024-01-01',
+    expiryDate: '2024-06-30',
+    accessCount: 12,
+    maxAccess: 20,
+    location: 'Italy > Exhibition',
+    status: 'active',
+  },
+  {
+    id: '4',
+    status: 'active',
+    code: 'ARTSHOW2023',
+    startDate: '2023-12-01',
+    expiryDate: '2024-03-31',
+    accessCount: 20,
+    maxAccess: 20,
+    location: 'Spain > Art Show',
+  },
+  {
+    id: '5',
+    code: 'CULTURE2024',
+    startDate: '2024-03-15',
+    expiryDate: '2024-09-30',
+    accessCount: 3,
+    maxAccess: 25,
+    location: 'UK > Cultural Center',
+    status: 'active',
+  },
+  {
+    id: '6',
+    code: 'HERITAGE24',
+    startDate: '2024-04-01',
+    expiryDate: '2024-10-31',
+    accessCount: 0,
+    maxAccess: 30,
+    location: 'Greece > Heritage Site',
+    status: 'active',
+  },
+  {
+    id: '7',
+    code: 'ARCHIVE2024',
+    startDate: '2024-01-15',
+    expiryDate: '2024-07-31',
+    accessCount: 15,
+    maxAccess: 15,
+    location: 'Netherlands > Archive',
+    status: 'expired',
+  },
+  {
+    id: '8',
+    code: 'LIBRARY24',
+    startDate: '2024-03-01',
+    expiryDate: '2024-08-31',
+    accessCount: 7,
+    maxAccess: 40,
+    location: 'Belgium > Library',
+    status: 'active',
+  },
+];
+
+const mockUsers: User[] = [
+  {
+    id: '1',
+    name: 'John Smith',
+    email: 'john.smith@email.com',
+    lastAccess: '2024-03-15',
+    totalAccess: 12,
+    codes: ['MUSEUM2024', 'GALLERY2024'],
+  },
+  {
+    id: '2',
+    name: 'Emma Wilson',
+    email: 'emma.w@email.com',
+    lastAccess: '2024-03-14',
+    totalAccess: 8,
+    codes: ['EXHIBIT2024'],
+  },
+  {
+    id: '3',
+    name: 'Michael Brown',
+    email: 'm.brown@email.com',
+    lastAccess: '2024-03-13',
+    totalAccess: 15,
+    codes: ['CULTURE2024', 'LIBRARY24'],
+  },
+  {
+    id: '4',
+    name: 'Sarah Davis',
+    email: 'sarah.d@email.com',
+    lastAccess: '2024-03-12',
+    totalAccess: 5,
+    codes: ['HERITAGE24'],
+  },
+  {
+    id: '5',
+    name: 'James Wilson',
+    email: 'j.wilson@email.com',
+    lastAccess: '2024-03-11',
+    totalAccess: 20,
+    codes: ['MUSEUM2024', 'GALLERY2024', 'EXHIBIT2024'],
+  },
+  {
+    id: '6',
+    name: 'Lisa Anderson',
+    email: 'l.anderson@email.com',
+    lastAccess: '2024-03-10',
+    totalAccess: 7,
+    codes: ['CULTURE2024'],
+  },
+  {
+    id: '7',
+    name: 'Robert Taylor',
+    email: 'r.taylor@email.com',
+    lastAccess: '2024-03-09',
+    totalAccess: 10,
+    codes: ['LIBRARY24', 'HERITAGE24'],
+  },
+  {
+    id: '8',
+    name: 'Emily White',
+    email: 'e.white@email.com',
+    lastAccess: '2024-03-08',
+    totalAccess: 3,
+    codes: ['MUSEUM2024'],
+  },
+  {
+    id: '9',
+    name: 'David Miller',
+    email: 'd.miller@email.com',
+    lastAccess: '2024-03-07',
+    totalAccess: 18,
+    codes: ['GALLERY2024', 'CULTURE2024', 'LIBRARY24'],
+  },
+  {
+    id: '10',
+    name: 'Jennifer Lee',
+    email: 'j.lee@email.com',
+    lastAccess: '2024-03-06',
+    totalAccess: 6,
+    codes: ['EXHIBIT2024', 'HERITAGE24'],
+  },
+];
+
 const formSchema = z.object({
   code: z.string().min(6),
   location: z.string(),
@@ -86,7 +248,7 @@ export default function Codes() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [showCreateModal, setShowCreateModal] = React.useState(false);
+  // const [showCreateModal, setShowCreateModal] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const [filter, setFilter] = React.useState('all');
 
@@ -98,30 +260,6 @@ export default function Codes() {
       maxAccess: 1,
     },
   });
-
-  const mockCodes: Code[] = [
-    {
-      id: '1',
-      code: 'MUSEUM2024',
-      startDate: '2024-03-01',
-      expiryDate: '2024-12-31',
-      accessCount: 5,
-      maxAccess: 10,
-      location: 'Germany > Museum',
-      status: 'active',
-    },
-  ];
-
-  const mockUsers: User[] = [
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      lastAccess: '2024-03-10',
-      totalAccess: 15,
-      codes: ['MUSEUM2024'],
-    },
-  ];
 
   useEffect(() => {
     const calculateHeight = () => {
@@ -157,6 +295,7 @@ export default function Codes() {
         setShowSuccess(false);
       }, 2000);
     } catch (error) {
+      console.log(error);
       setShowError(true);
     } finally {
       setIsSubmitting(false);
@@ -164,7 +303,7 @@ export default function Codes() {
   };
 
   return (
-    <div className="container mx-auto space-y-6 h-screen flex flex-col">
+    <div className="flex gap-4 flex-col">
       <div className="rounded-lg">
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-3">
@@ -204,8 +343,12 @@ export default function Codes() {
         <Tabs defaultValue="codes" className="h-full flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <TabsList>
-              <TabsTrigger value="codes">Codes</TabsTrigger>
-              <TabsTrigger value="users">Users</TabsTrigger>
+              <TabsTrigger value="codes" className="data-[state=active]:px-8">
+                Codes
+              </TabsTrigger>
+              <TabsTrigger value="users" className="data-[state=active]:px-8">
+                Users
+              </TabsTrigger>
             </TabsList>
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -281,8 +424,8 @@ export default function Codes() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-hidden" style={{ maxHeight }}>
-            <div className="h-full overflow-auto">
+          <div className="flex-1">
+            <div>
               <TabsContent value="codes" className="h-full">
                 <Table>
                   <TableHeader>

@@ -68,6 +68,15 @@ module.exports = {
           ring: 'var(--sidebar-ring)',
         },
       },
+      animation: {
+        'spin-ease': 'spin-ease 1.5s cubic-bezier(0.25, 0.1, 0.25, 1) infinite',
+      },
+      keyframes: {
+        'spin-ease': {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
+      },
     },
   },
   plugins: [require('tailwindcss-animate')],

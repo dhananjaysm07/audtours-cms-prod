@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import AudioPlayer from '@/components/audio-player';
 import {
   Breadcrumb,
@@ -10,42 +11,45 @@ import {
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useContentStore } from '@/store/useContentStore';
-import { useEffect } from 'react';
-import { useLocation } from 'react-router';
-import FlexiContainer from './flexi-container';
+import FlexiContainer from '@/components/flexi-container';
 import FolderItem from '@/components/folder-item';
-import { FolderUp, Home } from 'lucide-react';
+import { FolderUp, Home, Loader, ChevronDown, FileUp } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
-const capitalize = (str: string) => {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-};
-
-const getBreadcrumb = (path: string) => {
-  const segments = path.split('/').filter((segment) => segment.length > 0);
-
-  const breadcrumbItems = segments.map((segment, index) => {
-    const currentPath = `/explorer/${segments.slice(0, index + 1).join('/')}`;
-    return {
-      label: capitalize(segment),
-      path: currentPath,
-    };
-  });
-
+const getBreadcrumb = (currentPath) => {
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbLink href="/explorer">Home</BreadcrumbLink>
-        </BreadcrumbItem>
-        {breadcrumbItems.length > 0 && <BreadcrumbSeparator />}
-        {breadcrumbItems.map((item, index) => (
-          <BreadcrumbItem key={item.path}>
-            {index === breadcrumbItems.length - 1 ? (
-              <BreadcrumbPage>{item.label}</BreadcrumbPage>
+        {currentPath.map((item, index) => (
+          <BreadcrumbItem key={item.itemId}>
+            {index === currentPath.length - 1 ? (
+              <BreadcrumbPage>{item.name}</BreadcrumbPage>
             ) : (
               <>
-                <BreadcrumbLink href={item.path}>{item.label}</BreadcrumbLink>
-                <BreadcrumbSeparator />
+                <BreadcrumbLink href={`#${item.itemId}`}>
+                  {item.name}
+                </BreadcrumbLink>
+                {index < currentPath.length - 1 && <BreadcrumbSeparator />}
               </>
             )}
           </BreadcrumbItem>
@@ -55,25 +59,183 @@ const getBreadcrumb = (path: string) => {
   );
 };
 
-const ContentExplorer = () => {
-  const { isLoading } = useContentStore();
-  const location = useLocation();
+const UploadDialog = ({ allowedTypes = ['image', 'audio'] }) => {
+  const { uploadFile, isProcessing } = useContentStore();
+  const [isOpen, setIsOpen] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
 
-  const currentPath = location.pathname.replace('/explorer', '');
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (
+      selectedFile &&
+      allowedTypes.some((type) => selectedFile.type.startsWith(`${type}/`))
+    ) {
+      setFile(selectedFile);
+    } else {
+      alert('Invalid file type. Please select an image or audio file.');
+    }
+  };
+
+  const handleUpload = async () => {
+    if (file) {
+      await uploadFile(file);
+      setIsOpen(false);
+      setFile(null);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button
+          size={'sm'}
+          variant={'secondary'}
+          className="min-w-0"
+          disabled={isProcessing}
+        >
+          <FileUp size={16} />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Upload File</DialogTitle>
+        </DialogHeader>
+        <Input
+          type="file"
+          onChange={handleFileChange}
+          accept={allowedTypes.map((type) => `${type}/*`).join(',')}
+        />
+        <Button onClick={handleUpload} disabled={!file || isProcessing}>
+          Upload
+        </Button>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const CreateFolderDialog = () => {
+  const { createFolder, isProcessing, currentPath } = useContentStore();
+  const [isOpen, setIsOpen] = useState(false);
+  const [folderName, setFolderName] = useState('');
+  const [folderType, setFolderType] = useState('');
+
+  const handleCreate = async () => {
+    if (folderName && folderType) {
+      await createFolder(folderName, folderType as FolderKindSpecific);
+      setIsOpen(false);
+      setFolderName('');
+      setFolderType('');
+    }
+  };
+
+  const getAvailableTypes = () => {
+    const lastSegment = currentPath[currentPath.length - 1];
+    if (lastSegment.name.toLowerCase() === 'map') {
+      return ['spot', 'stop'];
+    }
+    return ['location', 'map', 'spot', 'stop'];
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="secondary">
+          + Create
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create Folder</DialogTitle>
+        </DialogHeader>
+        <Input
+          placeholder="Folder Name"
+          value={folderName}
+          onChange={(e) => setFolderName(e.target.value)}
+        />
+        <Select onValueChange={setFolderType}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select folder type" />
+          </SelectTrigger>
+          <SelectContent>
+            {getAvailableTypes().map((type) => (
+              <SelectItem key={type} value={type}>
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          onClick={handleCreate}
+          disabled={!folderName || !folderType || isProcessing}
+        >
+          Create
+        </Button>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const SortDropdown = () => {
+  const { setSortBy, setSortOrder, sortBy, sortOrder } = useContentStore();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="sm" variant="secondary">
+          Sort <ChevronDown size={16} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem onClick={() => setSortBy('name')}>
+          By Name {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setSortBy('date')}>
+          By Date {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setSortBy('size')}>
+          By Size {sortBy === 'size' && (sortOrder === 'asc' ? '↑' : '↓')}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+        >
+          {sortOrder === 'asc' ? 'Descending' : 'Ascending'}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
+const ContentExplorer = () => {
+  const {
+    isLoading,
+    setIsLoading,
+    currentPath,
+    navigateTo,
+    sortedItems,
+    error,
+  } = useContentStore();
 
   useEffect(() => {
-    setTimeout(() => {
-      useContentStore.setState({ isLoading: false });
-    }, 1500);
-  }, []);
+    const initializeStore = async () => {
+      setIsLoading(true);
+      await navigateTo('root');
+      setIsLoading(false);
+    };
+
+    initializeStore();
+  }, [setIsLoading, navigateTo]);
+
+  const handleUpLevel = () => {
+    if (currentPath.length > 1) {
+      navigateTo(currentPath[currentPath.length - 2].itemId);
+    }
+  };
 
   return (
     <div className="flex flex-col bg-white p-4 rounded-lg gap-4 flex-1">
-      {/* Breadcrumb */}
       <div className="bg-neutral-100 w-full rounded-md p-2">
         {getBreadcrumb(currentPath)}
       </div>
-      {/* End of Breadcrumb */}
 
       <div className="grow w-full rounded-lg relative">
         <div className="flex p-2 justify-between">
@@ -82,14 +244,14 @@ const ContentExplorer = () => {
               {isLoading ? (
                 <Skeleton className="w-20 h-4 bg-neutral-200" />
               ) : (
-                'My Folders'
+                currentPath[currentPath.length - 1].name
               )}
             </h2>
             <span>
               {isLoading ? (
                 <Skeleton className="w-20 h-4 bg-neutral-200" />
               ) : (
-                '2 items'
+                `${sortedItems.length} items`
               )}
             </span>
           </div>
@@ -98,35 +260,40 @@ const ContentExplorer = () => {
               size={'sm'}
               variant={'secondary'}
               className="min-w-0"
-              disabled={isLoading}
+              disabled={isLoading || currentPath.length === 1}
+              onClick={handleUpLevel}
             >
               <FolderUp size={16} />
             </Button>
             <Button
               size={'sm'}
               variant={'secondary'}
-              className="min-w-0"
               disabled={isLoading}
+              onClick={() => navigateTo('root')}
             >
               <Home size={16} />
             </Button>
-            <Button size={'sm'} variant={'secondary'} disabled={isLoading}>
-              + Create
-            </Button>
-            <Button size={'sm'} variant={'secondary'} disabled={isLoading}>
-              Sort
-            </Button>
+            <UploadDialog />
+            <CreateFolderDialog />
+            <SortDropdown />
           </div>
         </div>
         <FolderView />
+        {error && <div className="text-red-500 mt-2">{error}</div>}
         <AudioPlayer />
       </div>
     </div>
   );
 };
 
-const FolderView: React.FC = () => {
-  const { isLoading } = useContentStore();
+const FolderView = () => {
+  const {
+    isLoading,
+    sortedItems,
+    navigateTo,
+    toggleItemSelection,
+    selectedItems,
+  } = useContentStore();
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -139,6 +306,7 @@ const FolderView: React.FC = () => {
 
     if (acceptedFiles.length) {
       alert(`${acceptedFiles.length} file(s) accepted!`);
+      // Here you would typically call a function to upload these files
     } else {
       alert('Only image or audio files are allowed!');
     }
@@ -146,6 +314,14 @@ const FolderView: React.FC = () => {
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
+  };
+
+  const handleItemClick = (item: FolderItemProps) => {
+    if (item.kind === 'folder') {
+      navigateTo(item.itemId);
+    } else {
+      toggleItemSelection(item.itemId);
+    }
   };
 
   return (
@@ -156,49 +332,20 @@ const FolderView: React.FC = () => {
       className="cursor-auto"
     >
       <div className="flex-1 flex flex-wrap gap-6 p-2 overflow-y-auto scroll-smooth h-full justify-start items-start rounded-lg">
-        {isLoading
-          ? new Array(5)
-              .fill(0)
-              .map((_, index) => (
-                <Skeleton
-                  key={'skeleton' + index}
-                  className="h-28 aspect-square rounded-lg bg-neutral-200"
-                />
-              ))
-          : new Array(20).fill(0).map((_, index) => {
-              const kind = index % 2 === 0 ? 'folder' : 'file'; // Alternate between folder and file
-              const fileKind = index % 3 === 0 ? 'audio' : 'image'; // Determine fileKind
-
-              return (
-                <FolderItem
-                  {...(kind === 'file' ? { fileKind } : {})} // Conditionally pass fileKind
-                  {...(kind === 'file' && fileKind === 'audio'
-                    ? {
-                        audioMetadata: {
-                          duration: 120,
-                          size: '1.2 MB',
-                          createdAt: '2021-09-01',
-                        },
-                      }
-                    : {
-                        imageMetadata: {
-                          url: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400',
-                          position: index,
-                          createdAt: '2021-09-01',
-                        },
-                      })}
-                  itemId={String(index)}
-                  kind={kind}
-                  parentId={
-                    index % 2 === 0
-                      ? String(index)
-                      : String(Math.floor(index / 2))
-                  } // Assign parentId based on kind
-                  name={kind === 'folder' ? 'Folder ' + index : 'File ' + index}
-                  key={index}
-                />
-              );
-            })}
+        {isLoading ? (
+          <div className="grid h-full w-full place-items-center pb-16">
+            <Loader className="h-10 w-10 text-neutral-400/90 animate-spin-ease" />
+          </div>
+        ) : (
+          sortedItems.map((item) => (
+            <FolderItem
+              {...item}
+              key={item.itemId}
+              onClick={() => handleItemClick(item)}
+              isSelected={selectedItems.includes(item.itemId)}
+            />
+          ))
+        )}
       </div>
     </FlexiContainer>
   );

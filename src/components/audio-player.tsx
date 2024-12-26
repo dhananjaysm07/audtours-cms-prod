@@ -1,7 +1,7 @@
 import { useContentStore } from '@/store/useContentStore';
 import { useState } from 'react';
-import { Drawer, DrawerContent, DrawerTrigger } from './ui/drawer';
-import { Button } from './ui/button';
+import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
+import { Button } from '@/components/ui/button';
 import {
   ChevronUp,
   Languages,
@@ -10,7 +10,7 @@ import {
   SkipBack,
   SkipForward,
 } from 'lucide-react';
-import { Slider } from './ui/slider';
+import { Slider } from '@/components/ui/slider';
 
 const AudioPlayer = () => {
   const [isPlaying, setIsPlaying] = useState(false);
