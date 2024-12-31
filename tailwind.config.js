@@ -70,11 +70,16 @@ module.exports = {
       },
       animation: {
         'spin-ease': 'spin-ease 1.5s cubic-bezier(0.25, 0.1, 0.25, 1) infinite',
+        'macos-spin': 'macos-spin 1.25s infinite',
       },
       keyframes: {
         'spin-ease': {
           '0%': { transform: 'rotate(0deg)' },
           '100%': { transform: 'rotate(360deg)' },
+        },
+        'macos-spin': {
+          '0%': { opacity: 1 },
+          '100%': { opacity: 0 },
         },
       },
     },

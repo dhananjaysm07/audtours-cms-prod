@@ -106,6 +106,8 @@ const FolderItem: React.FC<FolderItemProps> = ({
   } = useContentStore();
 
   const handleDoubleClick = () => {
+    selectedItems.forEach((item) => toggleItemSelection(item));
+    toggleItemSelection(itemId);
     if (kind === 'folder') {
       navigateTo(itemId);
       console.log('Opening folder:', itemId);
@@ -119,12 +121,19 @@ const FolderItem: React.FC<FolderItemProps> = ({
   const handleOpen = handleDoubleClick;
   const isItemSelected = selectedItems.includes(itemId);
 
+  const handleSelection = (e: React.MouseEvent<HTMLDivElement>): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleItemSelection(itemId);
+  };
+
   return (
     <>
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
-            onClick={() => toggleItemSelection(itemId)}
+            onClick={handleSelection}
+            // onKeyDown={(e) => e.key === 'Enter' && handleDoubleClick()}
             onDoubleClick={handleDoubleClick}
             className={cn(
               'h-28 aspect-square flex flex-col items-center focus-visible:outline hover:bg-blue-50 justify-center shrink-0 rounded-lg',

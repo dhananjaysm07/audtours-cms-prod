@@ -90,7 +90,7 @@ const dummyData: FolderItemProps[] = [
     parentId: '5',
     fileKind: 'image',
     imageMetadata: {
-      url: 'https://picsum.photos/200',
+      url: 'https://picsum.photos/800',
       position: 2,
       createdAt: '2023-06-20',
     },
@@ -120,7 +120,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
   navigateTo: async (itemId) => {
     set({ isLoading: true });
     // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
 
     const newPath = [];
     let currentId = itemId;

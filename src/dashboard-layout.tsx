@@ -7,7 +7,6 @@ import AppSidebar from '@/components/app-sidebar';
 import { Suspense } from 'react';
 import LoadingSpinner from '@/components/spinner';
 import { Outlet, useLocation } from 'react-router';
-// import { useNavigate } from 'react-router';
 import sidebarOptions from './pages/sidebar-config';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -38,7 +37,13 @@ export default function DashboardLayout() {
             }
           </h1>
         </nav>
-        <Suspense fallback={<LoadingSpinner />}>
+        <Suspense
+          fallback={
+            <div className="grid place-items-center h-full w-full">
+              <LoadingSpinner />
+            </div>
+          }
+        >
           <Outlet />
         </Suspense>
       </SidebarInset>

@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils';
 import React from 'react';
 
 interface SpinnerProps {
@@ -7,7 +8,7 @@ interface SpinnerProps {
 
 const LoadingSpinner: React.FC<SpinnerProps> = ({
   size = 'medium',
-  color = 'text-gray-600',
+  color = 'text-neutral-600',
 }) => {
   const sizeClasses = {
     small: 'w-4 h-4',
@@ -17,10 +18,13 @@ const LoadingSpinner: React.FC<SpinnerProps> = ({
 
   return (
     <div className={`relative ${sizeClasses[size]}`}>
-      {[...Array(50)].map((_, index) => (
+      {[...Array(12)].map((_, index) => (
         <div
           key={index}
-          className={`absolute w-[8.33%] h-[25%] ${color} rounded-full transform -translate-y-1/2 opacity-0 animate-macos-spin`}
+          className={cn(
+            'absolute w-[5.8%] h-[20%] bg-neutral-500 transform -translate-y-1/2 opacity-0 animate-macos-spin',
+            color
+          )}
           style={{
             top: '50%',
             left: '50%',

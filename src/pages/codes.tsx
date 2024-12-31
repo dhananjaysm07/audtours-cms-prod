@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -64,8 +64,6 @@ interface User {
   totalAccess: number;
   codes: string[];
 }
-
-const Spinner = () => <Loader2 className="h-4 w-4 animate-spin" />;
 
 const mockCodes: Code[] = [
   {
@@ -303,7 +301,7 @@ export default function Codes() {
   };
 
   return (
-    <div className="flex gap-4 flex-col">
+    <div className="flex container mx-auto gap-4 flex-col">
       <div className="rounded-lg">
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-3">
@@ -354,7 +352,7 @@ export default function Codes() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" className="gap-2">
-                  <Plus className="h-4 w-4" /> Create New
+                  {/* <Plus className="h-2 w-2" />  */}+ Create Code
                 </Button>
               </DialogTrigger>
               <DialogContent>

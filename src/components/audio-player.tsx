@@ -22,29 +22,29 @@ const AudioPlayer = () => {
   return (
     <Drawer>
       <div className="w-full grid grid-cols-2 pr-4 h-24 bottom-0 rounded-lg absolute left-0 bg-neutral-100">
-        <div className="flex group pl-4 py-4 shrink items-center gap-4">
-          <DrawerTrigger asChild>
-            <Button
+        <DrawerTrigger asChild>
+          <div className="flex group pl-4 py-4 hover:opacity-75 hover:bg-neutral-50 hover:cursor-pointer transition-colors duration-150 shrink items-center gap-4">
+            {/* <Button
               variant={'ghost'}
               size={'sm'}
               disabled={isLoading}
               className="hidden px-2 py-1 self-start shrink-0 group-hover:block hover:bg-neutral-200"
             >
               <ChevronUp size={24} />
-            </Button>
-          </DrawerTrigger>
-          <img
-            src="https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400"
-            alt="Sample Audio"
-            className="md:h-16 h-6 aspect-square rounded-md object-cover"
-          />
-          <div className="md:grid md:grid-rows-2 flex items-center my-auto gap-1">
-            <h3 className="font-semibold text-sm truncate">
-              Germany - Countryside Audio
-            </h3>
-            <span className="text-xs">1.2 MB</span>
+            </Button> */}
+            <img
+              src="https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400"
+              alt="Sample Audio"
+              className="md:h-16 h-10 aspect-square rounded-md object-cover"
+            />
+            <div className="md:grid md:grid-rows-2 flex items-center my-auto gap-1">
+              <h3 className="font-semibold text-sm truncate">
+                Germany - Countryside Audio
+              </h3>
+              <span className="text-xs">1.2 MB</span>
+            </div>
           </div>
-        </div>
+        </DrawerTrigger>
         <div className="flex gap-2 items-center justify-end">
           <button
             disabled={prevDisabled}
@@ -72,13 +72,13 @@ const AudioPlayer = () => {
         </div>
       </div>
       <DrawerContent className="min-h-[90dvh]">
-        <div className="p-8 h-full grid grid-rows-2 md:grid-cols-2 md:grid-rows-1 gap-4">
+        <div className="p-8 grid grid-rows-2 grow grid-cols-1 md:grid-cols-2 md:grid-rows-1 gap-4">
           <img
             src="https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=900"
             alt="Sample Audio"
-            className="h-[30dvh] md:h-[80dvh] aspect-square rounded-md object-cover"
+            className="h-[40dvh] md:h-[80dvh] max-w-full mx-auto aspect-square rounded-md object-cover"
           />
-          <div className="flex md:gap-4 justify-center flex-col">
+          <div className="flex md:gap-4 justify-end md:justify-center flex-col">
             <h3 className="font-semibold text-4xl truncate">
               Germany - Countryside Audio
             </h3>

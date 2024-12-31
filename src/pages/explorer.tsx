@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useContentStore } from '@/store/useContentStore';
 import FlexiContainer from '@/components/flexi-container';
 import FolderItem from '@/components/folder-item';
-import { FolderUp, Home, Loader, ChevronDown, FileUp } from 'lucide-react';
+import { FolderUp, Home, ChevronDown, FileUp } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { FolderItemProps, FolderKindSpecific } from '@/types';
+import LoadingSpinner from '@/components/spinner';
+import { toast } from 'sonner';
 
 interface PathSegment {
   itemId: string;
@@ -72,7 +74,7 @@ const getBreadcrumb = (
 };
 
 const UploadDialog = ({ allowedTypes = ['image', 'audio'] }) => {
-  const { uploadFile, isProcessing } = useContentStore();
+  const { uploadFile, isProcessing, isLoading } = useContentStore();
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
 
@@ -103,7 +105,7 @@ const UploadDialog = ({ allowedTypes = ['image', 'audio'] }) => {
           size={'sm'}
           variant={'secondary'}
           className="min-w-0"
-          disabled={isProcessing}
+          disabled={isProcessing || isLoading}
         >
           <FileUp size={16} />
         </Button>
@@ -126,7 +128,8 @@ const UploadDialog = ({ allowedTypes = ['image', 'audio'] }) => {
 };
 
 const CreateFolderDialog = () => {
-  const { createFolder, isProcessing, currentPath } = useContentStore();
+  const { createFolder, isProcessing, isLoading, currentPath } =
+    useContentStore();
   const [isOpen, setIsOpen] = useState(false);
   const [folderName, setFolderName] = useState('');
   const [folderType, setFolderType] = useState('');
@@ -151,7 +154,11 @@ const CreateFolderDialog = () => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="secondary">
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={isLoading || isProcessing}
+        >
           + Create
         </Button>
       </DialogTrigger>
@@ -254,14 +261,14 @@ const ContentExplorer = () => {
           <div className="flex items-center gap-2">
             <h2 className="font-semibold">
               {isLoading ? (
-                <Skeleton className="w-20 h-4 bg-neutral-200" />
+                <Skeleton className="w-12 h-2 bg-neutral-200" />
               ) : (
                 currentPath[currentPath.length - 1].name
               )}
             </h2>
             <span>
               {isLoading ? (
-                <Skeleton className="w-20 h-4 bg-neutral-200" />
+                <Skeleton className="w-4 h-2 bg-neutral-200" />
               ) : (
                 `${sortedItems.length} items`
               )}
@@ -291,7 +298,7 @@ const ContentExplorer = () => {
           </div>
         </div>
         <FolderView />
-        {error && <div className="text-red-500 mt-2">{error}</div>}
+        {error && toast.error(error)}
         <AudioPlayer />
       </div>
     </div>
@@ -299,7 +306,8 @@ const ContentExplorer = () => {
 };
 
 const FolderView = () => {
-  const { isLoading, sortedItems } = useContentStore();
+  const { isLoading, sortedItems, selectedItems, toggleItemSelection } =
+    useContentStore();
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -328,11 +336,16 @@ const FolderView = () => {
       onDragEnd={handleDrop}
       onDragOver={handleDragOver}
       className="cursor-auto"
+      onKeyDownCapture={(e) =>
+        e.key === 'Escape' &&
+        selectedItems.forEach((item) => toggleItemSelection(item))
+      }
+      onClick={() => selectedItems.forEach((item) => toggleItemSelection(item))}
     >
       <div className="flex-1 flex flex-wrap gap-6 p-2 overflow-y-auto scroll-smooth h-full justify-start items-start rounded-lg">
         {isLoading ? (
           <div className="grid h-full w-full place-items-center pb-16">
-            <Loader className="h-10 w-10 text-neutral-400/90 animate-spin-ease" />
+            <LoadingSpinner size="medium" />
           </div>
         ) : (
           sortedItems.map((item: FolderItemProps) => (
