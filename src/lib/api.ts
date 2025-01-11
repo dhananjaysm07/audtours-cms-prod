@@ -140,7 +140,7 @@ export const contentApi: ContentApi = {
 
   async renameNode(id, newName) {
     try {
-      const response = await fetch(`${config.API_URL}/nodes/${id}`, {
+      const response = await fetch(`${config.API_URL}/nodes/${id}/rename`, {
         method: 'PATCH',
         headers: getHeaders(),
         body: JSON.stringify({ name: newName }),

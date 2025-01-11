@@ -44,7 +44,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ContentItem, NodeType, FolderItemType } from '@/types';
+import { ContentItem, NodeType, FolderItemType, RepositoryKind } from '@/types';
 import LoadingSpinner from '@/components/spinner';
 import { toast } from 'sonner';
 import { capitalize } from '@/lib/utils';
@@ -125,6 +125,10 @@ const getNodeBadge = (nodeType: NodeType) => {
   }
 };
 
+const isFileUploadAvailable = ({ type }: { type: FolderItemType }) => {
+  return type === 'repository';
+};
+
 const UploadDialog = ({ allowedTypes = ['image', 'audio'] }) => {
   const { uploadFile, isProcessing, isLoading, currentPath } =
     useContentStore();
@@ -143,6 +147,8 @@ const UploadDialog = ({ allowedTypes = ['image', 'audio'] }) => {
     }
   };
 
+  const currentNode = currentPath[currentPath.length - 1];
+
   const handleUpload = async () => {
     if (!file) return;
 
@@ -158,14 +164,22 @@ const UploadDialog = ({ allowedTypes = ['image', 'audio'] }) => {
     }
   };
 
+  const isUploadDisabled =
+    isProcessing ||
+    isLoading ||
+    !isFileUploadAvailable({ type: currentNode.type });
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
+      <DialogTrigger
+        // asChild
+        disabled={isUploadDisabled}
+      >
         <Button
           size="sm"
           variant="secondary"
           className="min-w-0"
-          disabled={isProcessing || isLoading}
+          disabled={isUploadDisabled}
         >
           <FileUp size={16} />
         </Button>
@@ -187,12 +201,26 @@ const UploadDialog = ({ allowedTypes = ['image', 'audio'] }) => {
   );
 };
 
+const isFolderCreationAvailable = ({
+  type,
+  nodeType,
+}: {
+  type: FolderItemType;
+  nodeType: NodeType | undefined;
+}) => {
+  if (type !== 'folder') return false;
+  if (nodeType === 'stop') return false;
+  return true;
+};
+
 const CreateFolderDialog = () => {
   const { createNode, isProcessing, isLoading, currentPath } =
     useContentStore();
   const [isOpen, setIsOpen] = useState(false);
   const [folderName, setFolderName] = useState('');
   const [folderType, setFolderType] = useState('');
+
+  console.log(currentPath);
 
   const handleCreate = async () => {
     if (folderName && folderType) {
@@ -208,13 +236,22 @@ const CreateFolderDialog = () => {
       }
     }
   };
+  const lastSegment = currentPath[currentPath.length - 1];
 
   const getAvailableTypes = () => {
     const lastSegment = currentPath[currentPath.length - 1];
-    if (lastSegment.nodeType?.toLowerCase() === 'map') {
-      return ['spot', 'stop'];
+    switch (lastSegment.nodeType?.toLowerCase()) {
+      case 'location':
+        return ['map', 'spot', 'stop'];
+      case 'map':
+        return ['spot', 'stop'];
+      case 'spot':
+        return ['stop'];
+      case 'stop':
+        return [];
+      default:
+        return ['location', 'map', 'spot', 'stop'];
     }
-    return ['location', 'map', 'spot', 'stop'];
   };
 
   return (
@@ -223,7 +260,14 @@ const CreateFolderDialog = () => {
         <Button
           size="sm"
           variant="secondary"
-          disabled={isLoading || isProcessing}
+          disabled={
+            isLoading ||
+            isProcessing ||
+            !isFolderCreationAvailable({
+              nodeType: lastSegment.nodeType,
+              type: lastSegment.type,
+            })
+          }
         >
           + Create
         </Button>

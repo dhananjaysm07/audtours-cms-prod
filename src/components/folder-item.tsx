@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ImageViewer from './image-viewer';
+import { config } from '@/config/config';
 
 interface FolderItemProps {
   item: ContentItem;
