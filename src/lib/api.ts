@@ -1,12 +1,12 @@
 // src/lib/api.ts
-import { config } from '@/config/config';
+import { config } from "@/config/config";
 import type {
   ApiResponse,
   Node,
   Repository,
   NodeType,
   RepositoryFile,
-} from '@/types';
+} from "@/types";
 
 type FetchChildrenResponse = {
   children: Node[];
@@ -34,18 +34,18 @@ interface ContentApi {
 class ApiError extends Error {
   constructor(message: string, public status?: number, public data?: unknown) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 }
 
 const getHeaders = () => {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem("auth_token");
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   };
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   return headers;
@@ -55,7 +55,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
     throw new ApiError(
-      errorData?.message || 'API request failed',
+      errorData?.message || "API request failed",
       response.status,
       errorData
     );
@@ -72,7 +72,7 @@ export const contentApi: ContentApi = {
       return handleResponse(response);
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError('Failed to fetch root nodes');
+      throw new ApiError("Failed to fetch root nodes");
     }
   },
 
@@ -87,7 +87,7 @@ export const contentApi: ContentApi = {
       return handleResponse(response);
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError('Failed to fetch children');
+      throw new ApiError("Failed to fetch children");
     }
   },
 
@@ -99,7 +99,7 @@ export const contentApi: ContentApi = {
       return handleResponse(response);
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError('Failed to fetch repository files');
+      throw new ApiError("Failed to fetch repository files");
     }
   },
 
@@ -107,60 +107,59 @@ export const contentApi: ContentApi = {
     const body = parentId ? { name, type, parentId } : { name, type };
     try {
       const response = await fetch(`${config.API_URL}/nodes`, {
-        method: 'POST',
+        method: "POST",
         headers: getHeaders(),
         body: JSON.stringify(body),
       });
       return handleResponse(response);
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError('Failed to create node');
+      throw new ApiError("Failed to create node");
     }
   },
 
   async deleteNode(id) {
     try {
       const response = await fetch(`${config.API_URL}/nodes/${id}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: getHeaders(),
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         throw new ApiError(
-          errorData?.message || 'Failed to delete node',
+          errorData?.message || "Failed to delete node",
           response.status,
           errorData
         );
       }
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError('Failed to delete node');
+      throw new ApiError("Failed to delete node");
     }
   },
 
   async renameNode(id, newName) {
     try {
       const response = await fetch(`${config.API_URL}/nodes/${id}`, {
-        method: 'PATCH',
+        method: "PATCH",
         headers: getHeaders(),
         body: JSON.stringify({ name: newName }),
       });
       return handleResponse(response);
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError('Failed to rename node');
+      throw new ApiError("Failed to rename node");
     }
   },
 
   async uploadFile(file, nodeId) {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('nodeId', nodeId);
-
-      const response = await fetch(`${config.API_URL}/upload`, {
-        method: 'POST',
+      formData.append("file", file);
+      formData.append("nodeId", nodeId);
+      const response = await fetch(`${config.API_URL}/repo/${nodeId}/upload`, {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -169,7 +168,7 @@ export const contentApi: ContentApi = {
       return handleResponse(response);
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError('Failed to upload file');
+      throw new ApiError("Failed to upload file");
     }
   },
 };
