@@ -17,6 +17,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
   imageUrl,
   alt,
 }) => {
+  console.log('Used image viewer');
   return (
     <div className="relative">
       <Dialog open={isOpen} onOpenChange={onClose}>

@@ -1,0 +1,132 @@
+// Parent Node
+{
+    "status": "success",
+    "data": [
+        {
+            "id": 1,
+            "name": "Germany",
+            "type": "location",
+            "level": 1,
+            "path": "/Germany",
+            "parentId": null,
+            "createdAt": "2025-01-05T17:35:26.912Z",
+            "updatedAt": "2025-01-05T17:35:26.912Z",
+            "repositories": [
+                {
+                    "id": 1,
+                    "nodeId": 1,
+                    "type": "gallery",
+                    "createdAt": "2025-01-05T17:35:26.917Z",
+                    "updatedAt": "2025-01-05T17:35:26.917Z"
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "name": "India",
+            "type": "location",
+            "level": 1,
+            "path": "/India",
+            "parentId": null,
+            "createdAt": "2025-01-05T17:35:48.215Z",
+            "updatedAt": "2025-01-05T17:35:48.215Z",
+            "repositories": [
+                {
+                    "id": 2,
+                    "nodeId": 2,
+                    "type": "gallery",
+                    "createdAt": "2025-01-05T17:35:48.217Z",
+                    "updatedAt": "2025-01-05T17:35:48.217Z"
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "name": "Germany M1",
+            "type": "map",
+            "level": 1,
+            "path": "/Germany M1",
+            "parentId": null,
+            "createdAt": "2025-01-05T17:35:57.751Z",
+            "updatedAt": "2025-01-05T17:35:57.751Z",
+            "repositories": [
+                {
+                    "id": 3,
+                    "nodeId": 3,
+                    "type": "gallery",
+                    "createdAt": "2025-01-05T17:35:57.753Z",
+                    "updatedAt": "2025-01-05T17:35:57.753Z"
+                },
+                {
+                    "id": 4,
+                    "nodeId": 3,
+                    "type": "audio",
+                    "createdAt": "2025-01-05T17:35:57.753Z",
+                    "updatedAt": "2025-01-05T17:35:57.753Z"
+                }
+            ]
+        }
+    ]
+}
+// ------------------------------------------------------------------------------------------------------
+// Get Child:
+{
+    "status": "success",
+    "data": {
+        "id": 4,
+        "name": "India M1",
+        "type": "map",
+        "level": 2,
+        "path": "/India/India M1",
+        "parentId": 2,
+        "createdAt": "2025-01-05T17:36:17.652Z",
+        "updatedAt": "2025-01-05T17:36:17.652Z",
+        "repositories": [
+            {
+                "id": 5,
+                "nodeId": 4,
+                "type": "gallery",
+                "createdAt": "2025-01-05T17:36:17.659Z",
+                "updatedAt": "2025-01-05T17:36:17.659Z"
+            },
+            {
+                "id": 6,
+                "nodeId": 4,
+                "type": "audio",
+                "createdAt": "2025-01-05T17:36:17.659Z",
+                "updatedAt": "2025-01-05T17:36:17.659Z"
+            }
+        ],
+        "children": [
+            {
+                "id": 5,
+                "name": "India Spot 1",
+                "type": "spot",
+                "level": 3,
+                "path": "/India/India M1/India Spot 1",
+                "parentId": 4,
+                "createdAt": "2025-01-05T17:36:31.607Z",
+                "updatedAt": "2025-01-05T17:36:31.607Z"
+            }
+        ]
+    }
+}
+// --------------------------------
+// Repo files
+{
+    "status": "success",
+    "data": [
+        {
+            "id": 1,
+            "repoId": 3,
+            "name": "New Image",
+            "filename": "admin-icon.png",
+            "mimeType": "image/png",
+            "size": 2997,
+            "position": 1,
+            "path": "/app/uploads/gallery/3/1736100677026-admin-icon.png",
+            "createdAt": "2025-01-05T18:11:17.036Z",
+            "updatedAt": "2025-01-05T18:11:17.036Z"
+        }
+    ]
+}

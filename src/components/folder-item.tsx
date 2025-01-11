@@ -1,24 +1,12 @@
-import { cn } from '@/lib/utils';
-import {
-  ArrowLeftRight,
-  Eye,
-  FileAudio2,
-  FileQuestion,
-  Folder,
-  FolderOpen,
-  Info,
-  Play,
-  TextCursorInput,
-  Trash2,
-} from 'lucide-react';
 import React, { useState } from 'react';
+import { useContentStore } from '@/store/useContentStore';
+import { ContentItem } from '@/types';
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -27,104 +15,136 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { FileKind, FolderItemKind, FolderItemProps } from '@/types';
+import { cn } from '@/lib/utils';
+import {
+  FolderOpen,
+  Eye,
+  Play,
+  TextCursorInput,
+  Trash2,
+  Info,
+  File,
+  Folder,
+  Music,
+  Image as ImageIcon,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import ImageViewer from './image-viewer';
-import PositionDialog from './position-dialog';
 
-import { useContentStore } from '@/store/useContentStore';
+interface FolderItemProps {
+  item: ContentItem;
+}
 
-const getFolderItemIcon = (
-  kind: FolderItemKind,
-  fileKind?: FileKind,
-  imageMetadata?: { url: string; position: number }
-) => {
-  switch (kind) {
-    case 'folder':
-      return (
-        <Folder
-          className="text-blue-400 cursor-pointer"
-          fill="currentColor"
-          size={64}
-        />
-      );
-    case 'file':
-      if (fileKind === 'image' && imageMetadata) {
-        return (
-          <img
-            src={imageMetadata?.url}
-            alt="Thumbnail"
-            width={56}
-            height={56}
-            className="aspect-square select-none mb-2 object-cover rounded-xl cursor-pointer"
-            loading="lazy"
-          />
-        );
-      } else if (fileKind === 'audio') {
-        return (
-          <FileAudio2
-            className="text-red-400 cursor-pointer"
-            strokeWidth={1.5}
-            size={64}
-          />
-        );
-      }
-      break;
-    default:
-      return (
-        <FileQuestion
-          className="text-neutral-400 cursor-pointer"
-          strokeWidth={1.5}
-          size={64}
-        />
-      );
+const getFolderItemIcon = (item: ContentItem) => {
+  if (item.type === 'folder') {
+    return (
+      <Folder
+        size={56}
+        className="text-blue-500 fill-blue-500"
+        strokeWidth={1.5}
+      />
+    );
   }
+
+  // Handle repositories
+  if (item.type === 'repository' && item.repoType === 'gallery') {
+    return (
+      <div className="relative">
+        <ImageIcon
+          size={16}
+          className="text-indigo-200 bottom-4 absolute right-2"
+          strokeWidth={2}
+        />
+        <Folder
+          size={56}
+          className="text-indigo-500 fill-indigo-500 top-0 left-0"
+          strokeWidth={1.5}
+        />
+      </div>
+    );
+    // return <ImageIcon size={56} className="text-green-500" strokeWidth={1.5} />;
+  }
+  if (item.type === 'repository' && item.repoType === 'audio') {
+    return (
+      <div className="relative">
+        <Music
+          size={16}
+          className="text-purple-300 bottom-4 absolute right-2"
+          strokeWidth={2}
+        />
+        <Folder
+          size={56}
+          className="text-purple-500 fill-purple-500 top-0 left-0"
+          strokeWidth={1.5}
+        />
+      </div>
+    );
+  }
+  if (item.type === 'file' && item.mimeType?.startsWith('image')) {
+    return <img src={item.path} width={100} height={100} />;
+  }
+  return <File size={56} className="text-gray-500" strokeWidth={1.5} />;
 };
 
-const FolderItem: React.FC<FolderItemProps> = ({
-  itemId,
-  name,
-  kind,
-  fileKind,
-  folderKind,
-  audioMetadata,
-  imageMetadata,
-}) => {
+const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPropertiesDialogOpen, setIsPropertiesDialogOpen] = useState(false);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
-  const [isPositionDialogOpen, setIsPositionDialogOpen] = useState(false);
-  const [newItemName, setNewItemName] = useState(name);
+  const [newItemName, setNewItemName] = useState(item.name);
+
   const {
     navigateTo,
     selectedItems,
     toggleItemSelection,
-    renameItem,
-    deleteItem,
+    renameNode,
+    deleteNode,
   } = useContentStore();
 
   const handleDoubleClick = () => {
-    selectedItems.forEach((item) => toggleItemSelection(item));
-    toggleItemSelection(itemId);
-    if (kind === 'folder') {
-      navigateTo(itemId);
-      console.log('Opening folder:', itemId);
-    } else if (kind === 'file' && fileKind === 'image') {
-      setIsImageViewerOpen(true);
-    } else if (kind === 'file' && fileKind === 'audio') {
-      console.log('Playing audio:', itemId);
-    }
-  };
+    selectedItems.forEach((id) => toggleItemSelection(id));
+    toggleItemSelection(item.id);
+    // Navigate when using folder or repository
+    if (item.type === 'folder' || item.type === 'repository')
+      navigateTo(item.id);
 
+    if (item.type === 'file' && item.mimeType?.startsWith('image')) {
+      setIsImageViewerOpen(true);
+    }
+
+    // if (item.type === 'file' && item.mimeType?.startsWith('audio'))
+    //   setIsImageViewerOpen(true);
+  };
   const handleOpen = handleDoubleClick;
-  const isItemSelected = selectedItems.includes(itemId);
+  const isItemSelected = selectedItems.includes(item.id);
 
   const handleSelection = (e: React.MouseEvent<HTMLDivElement>): void => {
     e.preventDefault();
     e.stopPropagation();
-    toggleItemSelection(itemId);
+    toggleItemSelection(item.id);
+  };
+
+  const handleRename = async () => {
+    try {
+      await renameNode(item.id, newItemName);
+      setIsRenameDialogOpen(false);
+      toast.success('Item renamed successfully');
+    } catch (error) {
+      toast.error('Failed to rename item');
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteNode(item.id);
+      setIsDeleteDialogOpen(false);
+      toast.success('Item deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete item');
+    }
   };
 
   return (
@@ -133,7 +153,6 @@ const FolderItem: React.FC<FolderItemProps> = ({
         <ContextMenuTrigger asChild>
           <div
             onClick={handleSelection}
-            // onKeyDown={(e) => e.key === 'Enter' && handleDoubleClick()}
             onDoubleClick={handleDoubleClick}
             className={cn(
               'h-28 aspect-square flex flex-col items-center focus-visible:outline hover:bg-blue-50 justify-center shrink-0 rounded-lg',
@@ -141,9 +160,9 @@ const FolderItem: React.FC<FolderItemProps> = ({
             )}
             tabIndex={0}
           >
-            {getFolderItemIcon(kind, fileKind, imageMetadata)}
+            {getFolderItemIcon(item)}
             <div className="flex justify-center">
-              <span className="text-sm truncate max-w-24">{name}</span>
+              <span className="text-sm truncate max-w-24">{item.name}</span>
             </div>
           </div>
         </ContextMenuTrigger>
@@ -153,22 +172,22 @@ const FolderItem: React.FC<FolderItemProps> = ({
             onSelect={handleOpen}
           >
             <span>
-              {kind === 'folder'
-                ? 'Open'
-                : fileKind === 'image'
+              {item.type === 'file' && item.mimeType?.startsWith('audio')
+                ? 'Play'
+                : item.type === 'file' && item.mimeType?.startsWith('image')
                 ? 'View'
-                : 'Play'}
+                : 'Open'}
             </span>
-            {kind === 'folder' ? (
+            {item.type === 'file' && item.mimeType?.startsWith('audio') ? (
+              <Play size={16} className="text-neutral-600" strokeWidth={1.5} />
+            ) : item.type === 'file' && item.mimeType?.startsWith('image') ? (
+              <Eye size={16} className="text-neutral-600" strokeWidth={1.5} />
+            ) : (
               <FolderOpen
                 size={16}
                 className="text-neutral-600"
                 strokeWidth={1.5}
               />
-            ) : fileKind === 'image' ? (
-              <Eye size={16} className="text-neutral-600" strokeWidth={1.5} />
-            ) : (
-              <Play size={16} className="text-neutral-600" strokeWidth={1.5} />
             )}
           </ContextMenuItem>
           <ContextMenuItem
@@ -182,19 +201,6 @@ const FolderItem: React.FC<FolderItemProps> = ({
               strokeWidth={1.5}
             />
           </ContextMenuItem>
-          {kind === 'file' && fileKind === 'image' && (
-            <ContextMenuItem
-              className="flex gap-2 justify-between"
-              onSelect={() => setIsPositionDialogOpen(true)}
-            >
-              <span>Position</span>
-              <ArrowLeftRight
-                size={16}
-                className="text-neutral-600"
-                strokeWidth={1.5}
-              />
-            </ContextMenuItem>
-          )}
           <ContextMenuItem
             className="flex gap-2 justify-between group"
             onSelect={() => setIsDeleteDialogOpen(true)}
@@ -232,12 +238,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
             onChange={(e) => setNewItemName(e.target.value)}
           />
           <DialogFooter>
-            <Button
-              variant={'ghost'}
-              className="w-full"
-              type="submit"
-              onClick={() => renameItem(itemId, newItemName)}
-            >
+            <Button variant="ghost" className="w-full" onClick={handleRename}>
               Rename
             </Button>
           </DialogFooter>
@@ -265,7 +266,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
             <Button
               className="w-full"
               variant="destructive"
-              onClick={() => deleteItem(itemId)}
+              onClick={handleDelete}
             >
               Delete
             </Button>
@@ -282,75 +283,47 @@ const FolderItem: React.FC<FolderItemProps> = ({
           <DialogHeader>
             <DialogTitle>Item Properties</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-2">
             <div className="flex gap-2 items-center">
               <Label>Name</Label>
-              <span className="text-neutral-700 text-sm">{name}</span>
+              <span className="text-neutral-700 text-sm">{item.name}</span>
             </div>
             <div className="flex gap-2 items-center">
-              <Label>Kind</Label>
-              <span className="text-neutral-700 text-sm">{kind}</span>
+              <Label>Type</Label>
+              <span className="text-neutral-700 text-sm">{item.nodeType}</span>
             </div>
-            {fileKind && (
+            <div className="flex gap-2 items-center">
+              <Label>Path</Label>
+              <span className="text-neutral-700 text-sm">{item.path}</span>
+            </div>
+            <div className="flex gap-2 items-center">
+              <Label>Created</Label>
+              <span className="text-neutral-700 text-sm">
+                {new Date(item.createdAt).toLocaleString()}
+              </span>
+            </div>
+            {item.type === 'repository' && item.repoType === 'gallery' && (
               <div className="flex gap-2 items-center">
-                <Label>File Type</Label>
-                <span className="text-neutral-700 text-sm">{fileKind}</span>
+                <Label>Repository</Label>
+                <span className="text-neutral-700 text-sm">Gallery</span>
               </div>
             )}
-            {folderKind && (
+            {item.type === 'repository' && item.repoType === 'audio' && (
               <div className="flex gap-2 items-center">
-                <Label>Folder Type</Label>
-                <span className="text-neutral-700 text-sm">{folderKind}</span>
-              </div>
-            )}
-            {audioMetadata && (
-              <>
-                <div className="flex gap-2 items-center">
-                  <Label>Duration</Label>
-                  <span className="text-neutral-700 text-sm">
-                    {audioMetadata.duration}s
-                  </span>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <Label>Size</Label>
-                  <span className="text-neutral-700 text-sm">
-                    {audioMetadata.size}
-                  </span>
-                </div>
-              </>
-            )}
-            {imageMetadata && (
-              <div className="flex gap-2 items-center">
-                <Label>Created At</Label>
-                <span className="text-neutral-700 text-sm">
-                  {imageMetadata.createdAt}
-                </span>
+                <Label>Repository</Label>
+                <span className="text-neutral-700 text-sm">Audio</span>
               </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Image Viewer Dialog */}
-      {kind === 'file' && fileKind === 'image' && imageMetadata && (
+      {item.mimeType?.startsWith('image') && item.path && (
         <ImageViewer
           isOpen={isImageViewerOpen}
-          onClose={() => setIsImageViewerOpen(false)}
-          imageUrl={imageMetadata.url}
-          alt={name}
-        />
-      )}
-
-      {/* Position Dialog */}
-      {kind === 'file' && fileKind === 'image' && (
-        <PositionDialog
-          isOpen={isPositionDialogOpen}
-          onClose={() => setIsPositionDialogOpen(false)}
-          onSave={(position) => {
-            console.log('New position:', position);
-            setIsPositionDialogOpen(false);
-          }}
-          currentPosition={imageMetadata!.position as number}
+          imageUrl={item.path}
+          onClose={() => setIsImageViewerOpen}
+          alt={item.name}
         />
       )}
     </>

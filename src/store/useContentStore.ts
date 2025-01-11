@@ -1,354 +1,293 @@
+// useContentStore.ts
 import { create } from 'zustand';
-import { FolderItemProps, FolderKindSpecific, FileKind } from '@/types';
+import { contentApi } from '@/lib/api';
+import {
+  type ContentState,
+  type ContentActions,
+  type Node,
+  type Repository,
+  type RepositoryFile,
+  type ContentItem,
+  FOLDER_ITEM_TYPE,
+  NodeType,
+  REPOSITORY_KINDS,
+} from '@/types';
+import { toast } from 'sonner';
 
-interface ContentState {
-  items: FolderItemProps[];
-  selectedItems: string[];
-  sortedItems: FolderItemProps[];
-  sortBy: 'name' | 'date' | 'size';
-  sortOrder: 'asc' | 'desc';
-  isProcessing: boolean;
-  error: string | null;
-  isAudioAvailable: boolean;
-  isImageAvailable: boolean;
-  isLoading: boolean;
-  currentPath: { itemId: string; name: string }[];
-  sortingTypes: Array<{ value: 'name' | 'date' | 'size'; label: string }>;
-}
+const transformNodeToContentItem = (node: Node): ContentItem => ({
+  id: node.id.toString(),
+  name: node.name,
+  type: FOLDER_ITEM_TYPE.FOLDER,
+  nodeType: node.type,
+  level: node.level,
+  parentId: node.parentId,
+  createdAt: node.createdAt,
+  updatedAt: node.updatedAt,
+});
 
-interface ContentActions {
-  setIsLoading: (loading: boolean) => void;
-  navigateTo: (itemId: string) => Promise<void>;
-  createFolder: (name: string, folderKind: FolderKindSpecific) => Promise<void>;
-  uploadFile: (file: File) => Promise<void>;
-  deleteItem: (id: string) => Promise<void>;
-  renameItem: (id: string, newName: string) => Promise<void>;
-  setPosition: (id: string, newPosition: number) => Promise<void>;
-  setSortBy: (sortBy: 'name' | 'date' | 'size') => void;
-  setSortOrder: (sortOrder: 'asc' | 'desc') => void;
-  toggleItemSelection: (id: string) => void;
-}
+const transformRepositoryToContentItem = (repo: Repository): ContentItem => ({
+  id: `_repo:${repo.id}`,
+  name: repo.type === REPOSITORY_KINDS.AUDIO ? 'Audio' : 'Gallery',
+  type: FOLDER_ITEM_TYPE.REPOSITORY,
+  repoType: repo.type,
+  createdAt: repo.createdAt,
+  updatedAt: repo.updatedAt,
+});
 
-const dummyData: FolderItemProps[] = [
-  { itemId: 'root', name: 'Home', kind: 'folder', parentId: null },
-  { itemId: '1', name: 'Folder 1', kind: 'folder', parentId: 'root' },
-  { itemId: '2', name: 'Folder 2', kind: 'folder', parentId: 'root' },
-  {
-    itemId: '3',
-    name: 'Audio 1',
-    kind: 'file',
-    parentId: 'root',
-    fileKind: 'audio',
-    audioMetadata: { duration: 180, size: '3.5 MB', createdAt: '2023-06-15' },
-  },
-  {
-    itemId: '4',
-    name: 'Image 1',
-    kind: 'file',
-    parentId: 'root',
-    fileKind: 'image',
-    imageMetadata: {
-      url: 'https://picsum.photos/200',
-      position: 0,
-      createdAt: '2023-06-16',
-    },
-  },
-  { itemId: '5', name: 'Subfolder 1', kind: 'folder', parentId: '1' },
-  {
-    itemId: '6',
-    name: 'Audio 2',
-    kind: 'file',
-    parentId: '1',
-    fileKind: 'audio',
-    audioMetadata: { duration: 240, size: '4.2 MB', createdAt: '2023-06-17' },
-  },
-  {
-    itemId: '7',
-    name: 'Image 2',
-    kind: 'file',
-    parentId: '2',
-    fileKind: 'image',
-    imageMetadata: {
-      url: 'https://picsum.photos/200',
-      position: 1,
-      createdAt: '2023-06-18',
-    },
-  },
-  { itemId: '8', name: 'Subfolder 2', kind: 'folder', parentId: '2' },
-  {
-    itemId: '9',
-    name: 'Audio 3',
-    kind: 'file',
-    parentId: '5',
-    fileKind: 'audio',
-    audioMetadata: { duration: 300, size: '5.1 MB', createdAt: '2023-06-19' },
-  },
-  {
-    itemId: '10',
-    name: 'Image 3',
-    kind: 'file',
-    parentId: '5',
-    fileKind: 'image',
-    imageMetadata: {
-      url: 'https://picsum.photos/800',
-      position: 2,
-      createdAt: '2023-06-20',
-    },
-  },
-];
+const transformFileToContentItem = (file: RepositoryFile): ContentItem => ({
+  id: file.id.toString(),
+  name: file.name,
+  type: FOLDER_ITEM_TYPE.FILE,
+  repoId: file.repoId,
+  filename: file.filename,
+  size: file.size,
+  mimeType: file.mimeType,
+  position: file.position,
+  createdAt: file.createdAt,
+  updatedAt: file.updatedAt,
+});
 
 const useContentStore = create<ContentState & ContentActions>((set, get) => ({
-  items: dummyData,
+  items: [],
   selectedItems: [],
   sortedItems: [],
   sortBy: 'name',
   sortOrder: 'asc',
   isProcessing: false,
   error: null,
-  isAudioAvailable: true,
-  isImageAvailable: true,
   isLoading: false,
-  currentPath: [{ itemId: '', name: 'Home' }],
-  sortingTypes: [
-    { value: 'name', label: 'Name' },
-    { value: 'date', label: 'Date' },
-    { value: 'size', label: 'Size' },
+  currentPath: [
+    {
+      id: 'root',
+      name: 'Home',
+      type: FOLDER_ITEM_TYPE.FOLDER,
+    },
   ],
 
-  setIsLoading: (loading) => set({ isLoading: loading }),
+  setIsLoading: (loading: boolean) => set({ isLoading: loading }),
 
-  navigateTo: async (itemId) => {
-    set({ isLoading: true });
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    const newPath = [];
-    let currentId = itemId;
-    while (currentId) {
-      const item = get().items.find((i) => i.itemId === currentId);
-      if (item) {
-        newPath.unshift({ itemId: item.itemId, name: item.name });
-        currentId = item.parentId;
-      } else {
-        break;
+  navigateTo: async (id: string, pathIndex?: number) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Handle root navigation
+      if (id === 'root') {
+        const response = await contentApi.fetchRootNodes();
+        const contentItems = response.data.map(transformNodeToContentItem);
+        set({
+          items: contentItems,
+          sortedItems: contentItems,
+          currentPath: [
+            { id: 'root', name: 'Home', type: FOLDER_ITEM_TYPE.FOLDER },
+          ],
+          isLoading: false,
+        });
+        return;
       }
-    }
 
-    set({
-      currentPath: newPath,
-      sortedItems: get().items.filter((item) => item.parentId === itemId),
-      isLoading: false,
-    });
-  },
+      // Get current state
+      const currentState = get();
+      let newPath = [...currentState.currentPath];
 
-  createFolder: async (name, folderKind) => {
-    set({ isProcessing: true, error: null });
-    try {
-      // Simulating API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const newFolder: FolderItemProps = {
-        itemId: Date.now().toString(),
-        name,
-        kind: 'folder',
-        parentId: get().currentPath[get().currentPath.length - 1].itemId,
-        folderKind,
-      };
-      set((state) => ({
-        items: [...state.items, newFolder],
-        sortedItems: [...state.sortedItems, newFolder],
-        isProcessing: false,
-      }));
-    } catch (error) {
-      set({ error: 'Failed to create folder', isProcessing: false });
-    }
-  },
-
-  uploadFile: async (file) => {
-    set({ isProcessing: true, error: null });
-    try {
-      // Simulating API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const fileKind: FileKind = file.type.startsWith('audio/')
-        ? 'audio'
-        : 'image';
-      const newFile: FolderItemProps = {
-        itemId: Date.now().toString(),
-        name: file.name,
-        kind: 'file',
-        parentId: get().currentPath[get().currentPath.length - 1].itemId,
-        fileKind,
-        ...(fileKind === 'audio'
-          ? {
-              audioMetadata: {
-                duration: 0, // You'd get this from the actual file
-                size: `${file.size} bytes`,
-                createdAt: new Date().toISOString(),
-              },
-            }
-          : {
-              imageMetadata: {
-                url: URL.createObjectURL(file),
-                position: get().items.filter(
-                  (item) => item.fileKind === 'image'
-                ).length,
-                createdAt: new Date().toISOString(),
-              },
-            }),
-      };
-      set((state) => ({
-        items: [...state.items, newFile],
-        sortedItems: [...state.sortedItems, newFile],
-        isProcessing: false,
-        isAudioAvailable: state.isAudioAvailable || fileKind === 'audio',
-        isImageAvailable: state.isImageAvailable || fileKind === 'image',
-      }));
-    } catch (error) {
-      set({ error: 'Failed to upload file', isProcessing: false });
-    }
-  },
-
-  deleteItem: async (id) => {
-    set({ isProcessing: true, error: null });
-    try {
-      // Simulating API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      set((state) => ({
-        items: state.items.filter((item) => item.itemId !== id),
-        sortedItems: state.sortedItems.filter((item) => item.itemId !== id),
-        selectedItems: state.selectedItems.filter((itemId) => itemId !== id),
-        isProcessing: false,
-      }));
-    } catch (error) {
-      set({ error: 'Failed to delete item', isProcessing: false });
-    }
-  },
-
-  renameItem: async (id, newName) => {
-    set({ isProcessing: true, error: null });
-    try {
-      // Simulating API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      set((state) => ({
-        items: state.items.map((item) =>
-          item.itemId === id ? { ...item, name: newName } : item
-        ),
-        sortedItems: state.sortedItems.map((item) =>
-          item.itemId === id ? { ...item, name: newName } : item
-        ),
-        isProcessing: false,
-      }));
-    } catch (error) {
-      set({ error: 'Failed to rename item', isProcessing: false });
-    }
-  },
-
-  setPosition: async (id, newPosition) => {
-    set({ isProcessing: true, error: null });
-    try {
-      // Simulating API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const itemToMove = get().items.find((item) => item.itemId === id);
-      if (
-        !itemToMove ||
-        itemToMove.kind !== 'file' ||
-        itemToMove.fileKind !== 'image'
-      ) {
-        throw new Error('Invalid item or not an image');
+      // If pathIndex is provided, truncate the path to that index
+      if (typeof pathIndex === 'number') {
+        newPath = newPath.slice(0, pathIndex + 1);
       }
-      const imageItems = get().items.filter(
-        (item) => item.kind === 'file' && item.fileKind === 'image'
+
+      // Handle repository navigation
+      if (id.startsWith('_repo:')) {
+        const repoId = id.replace('_repo:', '');
+        const response = await contentApi.fetchRepositoryFiles(repoId);
+        const contentItems = response.data.map(transformFileToContentItem);
+
+        // Only add to path if not clicking breadcrumb
+        if (typeof pathIndex === 'undefined') {
+          const repoItem = currentState.items.find((item) => item.id === id);
+          if (repoItem) {
+            newPath.push({
+              id,
+              name: repoItem.name,
+              type: FOLDER_ITEM_TYPE.REPOSITORY,
+              repoType: repoItem.repoType,
+            });
+          }
+        }
+
+        set({
+          items: contentItems,
+          sortedItems: contentItems,
+          currentPath: newPath,
+          isLoading: false,
+        });
+        return;
+      }
+
+      // Handle regular node navigation
+      const response = await contentApi.fetchChildren(id);
+      const nodes = response.data.children.map(transformNodeToContentItem);
+      const repositories = response.data.repositories.map(
+        transformRepositoryToContentItem
       );
-      if (newPosition < 0 || newPosition >= imageItems.length) {
-        throw new Error('Invalid position');
+      const contentItems = [...nodes, ...repositories];
+
+      // Only add to path if not clicking breadcrumb
+      if (typeof pathIndex === 'undefined') {
+        const clickedItem = currentState.items.find((item) => item.id === id);
+        if (clickedItem) {
+          newPath.push({
+            id: clickedItem.id,
+            name: clickedItem.name,
+            type: FOLDER_ITEM_TYPE.FOLDER,
+            nodeType: clickedItem.nodeType,
+          });
+        }
       }
-      set((state) => ({
-        items: state.items.map((item) =>
-          item.itemId === id &&
-          item.kind === 'file' &&
-          item.fileKind === 'image'
-            ? {
-                ...item,
-                imageMetadata: {
-                  ...item.imageMetadata!,
-                  position: newPosition,
-                },
-              }
-            : item
-        ),
-        sortedItems: state.sortedItems.map((item) =>
-          item.itemId === id &&
-          item.kind === 'file' &&
-          item.fileKind === 'image'
-            ? {
-                ...item,
-                imageMetadata: {
-                  ...item.imageMetadata!,
-                  position: newPosition,
-                },
-              }
-            : item
-        ),
-        isProcessing: false,
-      }));
+
+      // Apply current sorting
+      const sortedItems = sortItems(
+        contentItems,
+        currentState.sortBy,
+        currentState.sortOrder
+      );
+
+      set({
+        items: contentItems,
+        sortedItems,
+        currentPath: newPath,
+        isLoading: false,
+      });
     } catch (error) {
       set({
-        error:
-          error instanceof Error ? error.message : 'Failed to set position',
+        error: error instanceof Error ? error.message : 'Navigation failed',
+        isLoading: false,
+      });
+    }
+  },
+
+  createNode: async (name: string, type: NodeType, parentId: string | null) => {
+    set({ isProcessing: true, error: null });
+    try {
+      const isRoot = parentId === null || parentId === 'root';
+      const parsedNumber = !isRoot ? Number.parseInt(parentId) : 0;
+
+      const response = isRoot
+        ? await contentApi.createNode(name, type)
+        : await contentApi.createNode(name, type, parsedNumber);
+
+      const newItem = transformNodeToContentItem(response.data);
+      toast.success('Folder created successfully');
+      // Update items and maintain sort order
+      set((state) => {
+        const newItems = [...state.items, newItem];
+        const newSortedItems = sortItems(
+          newItems,
+          state.sortBy,
+          state.sortOrder
+        );
+
+        return {
+          items: newItems,
+          sortedItems: newSortedItems,
+          isProcessing: false,
+        };
+      });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to create node',
         isProcessing: false,
       });
     }
   },
 
-  setSortBy: (sortBy) => {
-    set({ sortBy });
-    get().sortItems();
+  uploadFile: async (file: File, nodeId: string) => {
+    set({ isProcessing: true, error: null });
+    try {
+      await contentApi.uploadFile(file, nodeId);
+      // Refresh current folder with current path index
+      const currentState = get();
+      const currentIndex = currentState.currentPath.length - 1;
+      const currentId = currentState.currentPath[currentIndex].id;
+      await get().navigateTo(currentId, currentIndex);
+      set({ isProcessing: false });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Upload failed',
+        isProcessing: false,
+      });
+    }
   },
 
-  setSortOrder: (sortOrder) => {
-    set({ sortOrder });
-    get().sortItems();
+  deleteNode: async (id: string) => {
+    set({ isProcessing: true, error: null });
+    try {
+      await contentApi.deleteNode(id);
+      set((state) => ({
+        items: state.items.filter((item) => item.id !== id),
+        sortedItems: state.sortedItems.filter((item) => item.id !== id),
+        selectedItems: state.selectedItems.filter((itemId) => itemId !== id),
+        isProcessing: false,
+      }));
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Delete failed',
+        isProcessing: false,
+      });
+    }
   },
 
-  sortItems: () => {
-    const { sortedItems, sortBy, sortOrder } = get();
-    const sorted = [...sortedItems].sort((a, b) => {
-      if (sortBy === 'name') {
-        return sortOrder === 'asc'
-          ? a.name.localeCompare(b.name)
-          : b.name.localeCompare(a.name);
-      } else if (sortBy === 'date') {
-        const aDate =
-          a.kind === 'file'
-            ? a.fileKind === 'audio'
-              ? a.audioMetadata?.createdAt
-              : a.imageMetadata?.createdAt
-            : '';
-        const bDate =
-          b.kind === 'file'
-            ? b.fileKind === 'audio'
-              ? b.audioMetadata?.createdAt
-              : b.imageMetadata?.createdAt
-            : '';
-        return sortOrder === 'asc'
-          ? aDate.localeCompare(bDate)
-          : bDate.localeCompare(aDate);
-      } else if (sortBy === 'size') {
-        const aSize =
-          a.kind === 'file' && a.fileKind === 'audio'
-            ? parseInt(a.audioMetadata?.size || '0')
-            : 0;
-        const bSize =
-          b.kind === 'file' && b.fileKind === 'audio'
-            ? parseInt(b.audioMetadata?.size || '0')
-            : 0;
-        return sortOrder === 'asc' ? aSize - bSize : bSize - aSize;
-      }
-      return 0;
+  renameNode: async (id: string, newName: string) => {
+    set({ isProcessing: true, error: null });
+    try {
+      const response = await contentApi.renameNode(id, newName);
+      const updatedItem = transformNodeToContentItem(response.data);
+
+      set((state) => {
+        // Update items
+        const newItems = state.items.map((item) =>
+          item.id === id ? updatedItem : item
+        );
+
+        // Update sorted items maintaining sort order
+        const newSortedItems = sortItems(
+          newItems,
+          state.sortBy,
+          state.sortOrder
+        );
+
+        // Update path if item exists there
+        const newPath = state.currentPath.map((segment) =>
+          segment.id === id ? { ...segment, name: newName } : segment
+        );
+
+        return {
+          items: newItems,
+          sortedItems: newSortedItems,
+          currentPath: newPath,
+          isProcessing: false,
+        };
+      });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Rename failed',
+        isProcessing: false,
+      });
+    }
+  },
+
+  setSortBy: (sortBy: ContentState['sortBy']) => {
+    set((state) => {
+      const sortedItems = sortItems(state.items, sortBy, state.sortOrder);
+      return { sortBy, sortedItems };
     });
-    set({ sortedItems: sorted });
   },
 
-  toggleItemSelection: (id) => {
+  setSortOrder: (sortOrder: ContentState['sortOrder']) => {
+    set((state) => {
+      const sortedItems = sortItems(state.items, state.sortBy, sortOrder);
+      return { sortOrder, sortedItems };
+    });
+  },
+
+  toggleItemSelection: (id: string) => {
     set((state) => ({
       selectedItems: state.selectedItems.includes(id)
         ? state.selectedItems.filter((itemId) => itemId !== id)
@@ -356,5 +295,32 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
     }));
   },
 }));
+
+// Helper function for sorting items
+const sortItems = (
+  items: ContentItem[],
+  sortBy: ContentState['sortBy'],
+  sortOrder: ContentState['sortOrder']
+): ContentItem[] => {
+  return [...items].sort((a, b) => {
+    if (sortBy === 'name') {
+      return sortOrder === 'asc'
+        ? (a.name || '').localeCompare(b.name || '')
+        : (b.name || '').localeCompare(a.name || '');
+    }
+
+    if (sortBy === 'date') {
+      return sortOrder === 'asc'
+        ? a.createdAt.localeCompare(b.createdAt)
+        : b.createdAt.localeCompare(a.createdAt);
+    }
+
+    if (sortBy === 'size' && a.size && b.size) {
+      return sortOrder === 'asc' ? a.size - b.size : b.size - a.size;
+    }
+
+    return 0;
+  });
+};
 
 export { useContentStore };

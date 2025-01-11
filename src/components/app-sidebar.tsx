@@ -13,12 +13,13 @@ import sidebarOptions from '@/pages/sidebar-config';
 import { useLocation } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
+import { useAuthStore } from '@/store/useAuthStore';
 
 function AppSidebar() {
   const { pathname } = useLocation();
   const pathnameInitial =
     pathname.split('/').length > 1 ? pathname.split('/')[1] : '';
-
+  const { user } = useAuthStore();
   return (
     <Sidebar className="pr-0" variant="inset" side="left">
       <SidebarHeader className="pt-4">
@@ -57,12 +58,12 @@ function AppSidebar() {
       <SidebarFooter>
         <div className="flex gap-2 items-center bg-neutral-100 rounded-md p-2">
           <img src="/admin-icon.png" alt="Admin Icon" className="h-10" />
-          <div className="flex flex-col gap-1 text-nowrap truncate">
+          <div className="flex flex-col gap-1 text-nowrap truncate grow">
             <span className="text font-semibold leading-none truncate">
-              John Doe
+              {user?.name}
             </span>
             <span className="text-sm leading-none text-muted-foreground truncate">
-              Administrator Privileges
+              {user?.role === 'admin' ? 'Administrator' : 'Content Manager'}
             </span>
           </div>
           <Button variant={'ghost'} size={'sm'} className="p-1 min-h-0 min-w-0">

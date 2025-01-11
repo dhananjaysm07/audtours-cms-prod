@@ -1,21 +1,33 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuthStore } from '@/store/useAuthStore';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const SignIn = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
+  const { login, isLoading, resetError } = useAuthStore();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock authentication
-    if (email === 'user@example.com' && password === 'password') {
-      localStorage.setItem('isAuthenticated', 'true');
+    resetError();
+
+    try {
+      await login(email, password);
       navigate('/');
-    } else {
-      alert('Invalid credentials');
+      toast.success('Successfully signed in');
+    } catch (error) {
+      console.error('Login error:', error);
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Failed to sign in');
+      }
     }
   };
 
@@ -41,6 +53,9 @@ const SignIn = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+                className="text-xl active:text-purple-700 focus-visible:bg-purple-50/30 autofill:bg-blue-100"
+                placeholder="Enter your email"
               />
             </div>
             <div className="space-y-2">
@@ -55,16 +70,19 @@ const SignIn = () => {
                 name="password"
                 type="password"
                 required
+                className={cn(
+                  'font-semibold active:text-purple-700 focus-visible:bg-purple-50/30 autofill:bg-blue-100',
+                  password.length > 0 && 'font-serif'
+                )}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                placeholder="Enter your password"
               />
             </div>
-            <button
-              type="submit"
-              className="w-full px-4 py-2 mt-4 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90 transition-colors"
-            >
-              Sign In
-            </button>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Signing in...' : 'Sign In'}
+            </Button>
           </form>
         </CardContent>
       </Card>

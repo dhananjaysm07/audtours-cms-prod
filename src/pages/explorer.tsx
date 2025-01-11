@@ -1,3 +1,4 @@
+// ContentExplorer.tsx
 import { useEffect, useState } from 'react';
 import AudioPlayer from '@/components/audio-player';
 import {
@@ -12,7 +13,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useContentStore } from '@/store/useContentStore';
 import FlexiContainer from '@/components/flexi-container';
 import FolderItem from '@/components/folder-item';
-import { FolderUp, Home, ChevronDown, FileUp } from 'lucide-react';
+import {
+  FolderUp,
+  Home,
+  ChevronDown,
+  FileUp,
+  MapIcon,
+  Globe,
+  MapPin,
+  Compass,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -34,34 +44,41 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { FolderItemProps, FolderKindSpecific } from '@/types';
+import { ContentItem, NodeType, FolderItemType } from '@/types';
 import LoadingSpinner from '@/components/spinner';
 import { toast } from 'sonner';
+import { capitalize } from '@/lib/utils';
 
 interface PathSegment {
-  itemId: string;
+  id: string;
   name: string;
+  type: FolderItemType;
+  nodeType?: string;
+  repoType?: string;
 }
 
 const getBreadcrumb = (
   currentPath: PathSegment[],
-  navigateTo: (itemId: string) => void
+  onBreadcrumbClick: (segment: PathSegment, index: number) => void
 ) => {
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        {currentPath.map((item, index) => (
-          <BreadcrumbItem key={item.itemId}>
+        {currentPath.map((segment, index) => (
+          <BreadcrumbItem key={segment.id}>
             {index === currentPath.length - 1 ? (
-              <BreadcrumbPage>{item.name}</BreadcrumbPage>
+              <BreadcrumbPage>
+                {segment.name}
+                {/* {segment.nodeType ? ` (${capitalize(segment.nodeType)})` : ''} */}
+              </BreadcrumbPage>
             ) : (
               <>
                 <button
-                  // variant="ghost"
                   className="hover:text-foreground"
-                  onClick={() => navigateTo(item.itemId)}
+                  onClick={() => onBreadcrumbClick(segment, index)}
                 >
-                  {item.name}
+                  {segment.name}
+                  {/* {segment.nodeType ? ` (${capitalize(segment.nodeType)})` : ''} */}
                 </button>
                 {index < currentPath.length - 1 && <BreadcrumbSeparator />}
               </>
@@ -73,8 +90,44 @@ const getBreadcrumb = (
   );
 };
 
+const getNodeBadge = (nodeType: NodeType) => {
+  const node = capitalize(nodeType);
+  switch (nodeType) {
+    case 'location':
+      return (
+        <span className="flex items-center bg-cyan-50 text-cyan-600 px-2 gap-1">
+          <Globe size={15} strokeWidth={1.5} />
+          <span>{node}</span>
+        </span>
+      );
+    case 'map':
+      return (
+        <span className="flex items-center bg-green-50 text-green-600 px-2 gap-1">
+          <MapIcon size={15} strokeWidth={1.5} />
+          <span>{node}</span>
+        </span>
+      );
+
+    case 'spot':
+      return (
+        <span className="flex items-center bg-purple-50 text-purple-600 px-2 gap-1">
+          <Compass size={15} strokeWidth={1.5} />
+          <span>{node}</span>
+        </span>
+      );
+    case 'stop':
+      return (
+        <span className="flex items-center bg-orange-50 text-orange-600 px-2 gap-1">
+          <MapPin size={15} strokeWidth={1.5} />
+          <span>{node}</span>
+        </span>
+      );
+  }
+};
+
 const UploadDialog = ({ allowedTypes = ['image', 'audio'] }) => {
-  const { uploadFile, isProcessing, isLoading } = useContentStore();
+  const { uploadFile, isProcessing, isLoading, currentPath } =
+    useContentStore();
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
 
@@ -86,15 +139,22 @@ const UploadDialog = ({ allowedTypes = ['image', 'audio'] }) => {
     ) {
       setFile(selectedFile);
     } else {
-      alert('Invalid file type. Please select an image or audio file.');
+      toast.error('Invalid file type. Please select an image or audio file.');
     }
   };
 
   const handleUpload = async () => {
-    if (file) {
-      await uploadFile(file);
+    if (!file) return;
+
+    try {
+      const currentNodeId = currentPath[currentPath.length - 1].id;
+      await uploadFile(file, currentNodeId);
       setIsOpen(false);
       setFile(null);
+      toast.success('File uploaded successfully');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to upload file');
     }
   };
 
@@ -102,8 +162,8 @@ const UploadDialog = ({ allowedTypes = ['image', 'audio'] }) => {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
-          size={'sm'}
-          variant={'secondary'}
+          size="sm"
+          variant="secondary"
           className="min-w-0"
           disabled={isProcessing || isLoading}
         >
@@ -128,7 +188,7 @@ const UploadDialog = ({ allowedTypes = ['image', 'audio'] }) => {
 };
 
 const CreateFolderDialog = () => {
-  const { createFolder, isProcessing, isLoading, currentPath } =
+  const { createNode, isProcessing, isLoading, currentPath } =
     useContentStore();
   const [isOpen, setIsOpen] = useState(false);
   const [folderName, setFolderName] = useState('');
@@ -136,16 +196,22 @@ const CreateFolderDialog = () => {
 
   const handleCreate = async () => {
     if (folderName && folderType) {
-      await createFolder(folderName, folderType as FolderKindSpecific);
-      setIsOpen(false);
-      setFolderName('');
-      setFolderType('');
+      const parentId = currentPath[currentPath.length - 1].id;
+      try {
+        await createNode(folderName, folderType as NodeType, parentId);
+        setIsOpen(false);
+        setFolderName('');
+        setFolderType('');
+      } catch (error) {
+        console.error(error);
+        // toast.error('Failed to create folder');
+      }
     }
   };
 
   const getAvailableTypes = () => {
     const lastSegment = currentPath[currentPath.length - 1];
-    if (lastSegment.name.toLowerCase() === 'map') {
+    if (lastSegment.nodeType?.toLowerCase() === 'map') {
       return ['spot', 'stop'];
     }
     return ['location', 'map', 'spot', 'stop'];
@@ -224,92 +290,17 @@ const SortDropdown = () => {
   );
 };
 
-const ContentExplorer = () => {
+const FolderView = () => {
   const {
     isLoading,
-    setIsLoading,
-    currentPath,
-    navigateTo,
     sortedItems,
-    error,
+    selectedItems,
+    toggleItemSelection,
+    uploadFile,
+    currentPath,
   } = useContentStore();
 
-  useEffect(() => {
-    const initializeStore = async () => {
-      setIsLoading(true);
-      await navigateTo('root');
-      setIsLoading(false);
-    };
-
-    initializeStore();
-  }, [setIsLoading, navigateTo]);
-
-  const handleUpLevel = () => {
-    if (currentPath.length > 1) {
-      navigateTo(currentPath[currentPath.length - 2].itemId);
-    }
-  };
-
-  return (
-    <div className="flex flex-col bg-white p-4 rounded-lg gap-4 flex-1">
-      <div className="bg-neutral-100 w-full rounded-md p-2">
-        {getBreadcrumb(currentPath, navigateTo)}
-      </div>
-
-      <div className="grow w-full rounded-lg relative">
-        <div className="flex p-2 justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="font-semibold">
-              {isLoading ? (
-                <Skeleton className="w-12 h-2 bg-neutral-200" />
-              ) : (
-                currentPath[currentPath.length - 1].name
-              )}
-            </h2>
-            <span>
-              {isLoading ? (
-                <Skeleton className="w-4 h-2 bg-neutral-200" />
-              ) : (
-                `${sortedItems.length} items`
-              )}
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              size={'sm'}
-              variant={'secondary'}
-              className="min-w-0"
-              disabled={isLoading || currentPath.length === 1}
-              onClick={handleUpLevel}
-            >
-              <FolderUp size={16} />
-            </Button>
-            <Button
-              size={'sm'}
-              variant={'secondary'}
-              disabled={isLoading}
-              onClick={() => navigateTo('root')}
-            >
-              <Home size={16} />
-            </Button>
-            <UploadDialog />
-            <CreateFolderDialog />
-            <SortDropdown />
-          </div>
-        </div>
-        <FolderView />
-        {error && toast.error(error)}
-        <AudioPlayer />
-      </div>
-    </div>
-  );
-};
-
-const FolderView = () => {
-  const { isLoading, sortedItems, selectedItems, toggleItemSelection } =
-    useContentStore();
-
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -319,10 +310,18 @@ const FolderView = () => {
     );
 
     if (acceptedFiles.length) {
-      alert(`${acceptedFiles.length} file(s) accepted!`);
-      // Here you would typically call a function to upload these files
+      const currentNodeId = currentPath[currentPath.length - 1].id;
+      for (const file of acceptedFiles) {
+        try {
+          await uploadFile(file, currentNodeId);
+        } catch (error) {
+          console.error(error);
+          toast.error(`Failed to upload ${file.name}`);
+        }
+      }
+      toast.success(`${acceptedFiles.length} file(s) uploaded successfully`);
     } else {
-      alert('Only image or audio files are allowed!');
+      toast.error('Only image or audio files are allowed!');
     }
   };
 
@@ -348,12 +347,123 @@ const FolderView = () => {
             <LoadingSpinner size="medium" />
           </div>
         ) : (
-          sortedItems.map((item: FolderItemProps) => (
-            <FolderItem {...item} key={item.itemId} />
+          sortedItems.map((item: ContentItem) => (
+            <FolderItem item={item} key={item.id} />
           ))
         )}
       </div>
     </FlexiContainer>
+  );
+};
+
+const ContentExplorer = () => {
+  const {
+    isLoading,
+    setIsLoading,
+    currentPath,
+    navigateTo,
+    sortedItems,
+    error,
+  } = useContentStore();
+
+  useEffect(() => {
+    const initializeStore = async () => {
+      setIsLoading(true);
+      try {
+        await navigateTo('root');
+      } catch (error) {
+        console.error(error);
+        toast.error('Failed to initialize content');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeStore();
+  }, [setIsLoading, navigateTo]);
+
+  const handleBreadcrumbClick = async (segment: PathSegment, index: number) => {
+    try {
+      // Navigate to the clicked segment
+      await navigateTo(segment.id, index);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to navigate');
+    }
+  };
+
+  const handleUpLevel = () => {
+    if (currentPath.length > 1) {
+      const parentIndex = currentPath.length - 2;
+      const parentSegment = currentPath[parentIndex];
+      handleBreadcrumbClick(parentSegment, parentIndex);
+    }
+  };
+
+  const canNavigateUp = currentPath.length > 1;
+  const currentSegment = currentPath[currentPath.length - 1];
+  const isRoot = currentPath.length === 1;
+
+  useEffect(() => {
+    if (error) toast.error(error);
+  }, [error]);
+
+  return (
+    <div className="flex flex-col bg-white p-4 rounded-lg gap-4 flex-1">
+      <div className="bg-neutral-100 w-full rounded-md p-2">
+        {getBreadcrumb(currentPath, handleBreadcrumbClick)}
+      </div>
+
+      <div className="grow w-full rounded-lg relative">
+        <div className="flex p-2 justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold">
+              {isLoading ? (
+                <Skeleton className="w-12 h-2 bg-neutral-200" />
+              ) : (
+                currentSegment.name
+              )}
+            </h2>
+            <span>
+              {isLoading ? (
+                <Skeleton className="w-4 h-2 bg-neutral-200" />
+              ) : (
+                `${sortedItems.length} items`
+              )}
+            </span>
+            {currentSegment.nodeType && (
+              <span className="ml-1">
+                {getNodeBadge(currentSegment.nodeType)}
+              </span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="min-w-0"
+              disabled={isLoading || !canNavigateUp}
+              onClick={handleUpLevel}
+            >
+              <FolderUp size={16} />
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={isLoading || isRoot}
+              onClick={() => navigateTo('root')}
+            >
+              <Home size={16} />
+            </Button>
+            <UploadDialog />
+            <CreateFolderDialog />
+            <SortDropdown />
+          </div>
+        </div>
+        <FolderView />
+        <AudioPlayer />
+      </div>
+    </div>
   );
 };
 

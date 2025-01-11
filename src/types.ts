@@ -1,94 +1,146 @@
+// Constants
 export const FOLDER_ITEM_TYPE = {
   FOLDER: 'folder',
   FILE: 'file',
-  ROOT: 'root',
+  REPOSITORY: 'repository',
 } as const;
 
-export const FILE_KINDS = {
+export const REPOSITORY_KINDS = {
   AUDIO: 'audio',
-  IMAGE: 'image',
+  GALLERY: 'gallery',
 } as const;
 
-export const FOLDER_KINDS = {
+export const NODE_TYPES = {
   MAP: 'map',
   LOCATION: 'location',
   SPOT: 'spot',
   STOP: 'stop',
 } as const;
 
-export type FolderItemKind = 'folder' | 'file' | 'root';
+// Type Utilities
+export type FolderItemType =
+  (typeof FOLDER_ITEM_TYPE)[keyof typeof FOLDER_ITEM_TYPE];
+export type RepositoryKind =
+  (typeof REPOSITORY_KINDS)[keyof typeof REPOSITORY_KINDS];
+export type NodeType = (typeof NODE_TYPES)[keyof typeof NODE_TYPES];
 
-// export type FolderItemKind = keyof typeof FOLDER_ITEM_TYPE;
-// export type FileKind = keyof typeof FILE_KINDS;
-export type FileKind = 'audio' | 'image';
-export type FolderKindSpecific = keyof typeof FOLDER_KINDS;
-
-export interface FolderItemProps {
-  itemId: string;
-  name: string;
-  kind: FolderItemKind; // 'folder', 'file', or 'root'
-  parentId: string | null;
-  fileKind?: FileKind; // Optional: 'audio' or 'image' if it's a file
-  folderKind?: FolderKindSpecific; // Optional: Specific folder type ('map', 'location', etc.)
-  audioMetadata?: {
-    duration: number;
-    size: string;
-    createdAt: string;
-  };
-  imageMetadata?: {
-    url: string;
-    position: number;
-    createdAt: string;
-  };
-}
-
-export interface FolderState {
-  items: FolderItemProps[];
-  selectedItems: string[];
-  currentFolderId: string | null;
-  currentFolderName: string;
-}
-
-export interface FolderActions {
-  addItem: (item: FolderItemProps) => void;
-  removeItem: (id: string) => void;
-  updateItem: (id: string, updates: Partial<FolderItemProps>) => void;
-  moveItem: (id: string, newParentId: string) => void;
-  setSelectedId: (id: string | null) => void;
-  toggleExpanded: (id: string) => void;
-}
-
-export interface AudioTrack {
-  id: string;
-  title: string;
-  language: string;
+// Base interfaces
+interface BaseItem {
+  id: number;
   createdAt: string;
+  updatedAt: string;
+}
+
+// Main interfaces
+export interface Repository extends BaseItem {
+  nodeId: number;
+  type: RepositoryKind;
+}
+
+export interface Node extends BaseItem {
+  name: string;
+  type: NodeType;
+  level: number;
+  path: string;
+  parentId: number | null;
+}
+
+export interface RepositoryFile extends BaseItem {
+  name: string;
+  repoId: number;
+  type: string;
+  filename: string;
+  size: number;
+  mimeType: string;
+  position: number;
+  path: string;
+}
+
+// Content item types
+export type ContentItem = {
+  id: string;
+  name: string;
+  type: FolderItemType;
+  nodeType?: NodeType;
+  level?: number;
+  path?: string;
+  parentId?: number | null;
+  repoId?: number;
+  repoType?: RepositoryKind;
+  filename?: string;
+  size?: number;
+  mimeType?: string;
+  position?: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// Metadata interfaces
+export interface AudioMetadata {
   duration: number;
-  url: string;
   size: string;
+  createdAt: string;
 }
 
-export interface AudioState {
-  isLoading: boolean;
+export interface ImageMetadata {
+  url: string;
+  position: number;
+  createdAt: string;
+}
+
+// Store state interfaces
+export interface ContentState {
+  items: ContentItem[];
+  selectedItems: string[];
+  sortedItems: ContentItem[];
+  sortBy: 'name' | 'date' | 'size';
+  sortOrder: 'asc' | 'desc';
+  isProcessing: boolean;
   error: string | null;
-  currentTrack: AudioTrack | null;
-  isPlaying: boolean;
-  currentTime: number;
-  volume: number;
-  tracks: AudioTrack[];
-  queue: string[]; // Array of track IDs in queue
+  isLoading: boolean;
+  currentPath: Array<{
+    id: string;
+    name: string;
+    type: FolderItemType;
+    repoType?: RepositoryKind;
+    nodeType?: NodeType;
+  }>;
 }
 
-export interface AudioActions {
+export interface ContentActions {
   setIsLoading: (loading: boolean) => void;
-  setError: (error: string | null) => void;
-  setCurrentTrack: (track: AudioTrack | null) => void;
-  setIsPlaying: (playing: boolean) => void;
-  setCurrentTime: (time: number) => void;
-  setVolume: (volume: number) => void;
-  setTracks: (tracks: AudioTrack[]) => void;
-  addToQueue: (trackId: string) => void;
-  removeFromQueue: (trackId: string) => void;
-  playNext: () => void;
-  playPrevious: () => void;
+  navigateTo: (id: string, pathIndex?: number) => Promise<void>;
+  createNode: (
+    name: string,
+    type: NodeType,
+    parentId: string | null
+  ) => Promise<void>;
+  uploadFile: (file: File, nodeId: string) => Promise<void>;
+  deleteNode: (id: string) => Promise<void>;
+  renameNode: (id: string, newName: string) => Promise<void>;
+  setSortBy: (sortBy: ContentState['sortBy']) => void;
+  setSortOrder: (sortOrder: ContentState['sortOrder']) => void;
+  toggleItemSelection: (id: string) => void;
+}
+
+// API interfaces
+export interface ApiResponse<T> {
+  status: string;
+  data: T;
+}
+
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: 'admin' | 'user';
+}
+
+export interface AuthResponse {
+  status: 'success' | 'error';
+  data: {
+    token: string;
+    user: User;
+  };
+  message: string;
 }
