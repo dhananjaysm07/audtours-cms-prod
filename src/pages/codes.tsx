@@ -1,8 +1,7 @@
-// src/pages/codes.tsx
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import * as z from 'zod';
+import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -33,15 +32,10 @@ import CreateCodeDialog from '@/components/create-code-dialog';
 import { subscriptionApi } from '@/lib/api';
 import type { CodeResponse, PaginationMeta } from '@/types';
 import LoadingSpinner from '@/components/spinner';
-
-export const formSchema = z.object({
-  nodeIds: z.array(z.number()),
-  validFrom: z.string(),
-  validTo: z.string(),
-  maxUsers: z.number().min(1, 'Maximum users must be at least 1'),
-});
-
-export type FormSchema = z.infer<typeof formSchema>;
+import {
+  createCodeSchema,
+  CreateCodeSchema,
+} from '@/schemas/create-code-schema';
 
 const DEFAULT_PAGINATION: PaginationMeta = {
   total: 0,
@@ -52,7 +46,7 @@ const DEFAULT_PAGINATION: PaginationMeta = {
 
 export default function Codes() {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [maxHeight, setMaxHeight] = useState<string>('0');
+  const [, setMaxHeight] = useState<string>('0');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState('codes');
@@ -65,8 +59,8 @@ export default function Codes() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
 
-  const form = useForm<FormSchema>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<CreateCodeSchema>({
+    resolver: zodResolver(createCodeSchema),
     defaultValues: {
       nodeIds: [],
       validFrom: new Date().toISOString().split('T')[0],
@@ -87,19 +81,15 @@ export default function Codes() {
         );
 
         if (response.status === 'success') {
-          // The response.data contains the codes array
-          console.log(response.data);
           setCodes(response.data);
           if (response.meta?.pagination) {
             setPagination(response.meta.pagination);
           }
         } else {
-          setError(response.message || 'Failed to load codes');
+          toast.error(response.message || 'Failed to load codes');
         }
       } catch (error) {
-        setError(
-          error instanceof Error ? error.message : 'Failed to load codes'
-        );
+        toast.error('Failed to load codes');
         console.error('Failed to load codes:', error);
       } finally {
         setIsLoading(false);
@@ -108,7 +98,6 @@ export default function Codes() {
     [pagination.page, pagination.limit]
   );
 
-  // Update the handleSearch function:
   const handleSearch = useCallback(
     async (searchTerm: string) => {
       try {
@@ -118,16 +107,15 @@ export default function Codes() {
         if (searchTerm.trim()) {
           const response = await subscriptionApi.searchCodes(searchTerm);
           if (response.status === 'success') {
-            // Assuming search returns an array of codes directly
             setCodes(response.data);
           } else {
-            setError(response.message || 'Search failed');
+            toast.error(response.message || 'Search failed');
           }
         } else {
           await loadCodes(1, pagination.limit);
         }
       } catch (error) {
-        setError(error instanceof Error ? error.message : 'Search failed');
+        toast.error('Search failed');
         console.error('Search failed:', error);
       } finally {
         setIsLoading(false);
@@ -136,21 +124,19 @@ export default function Codes() {
     [loadCodes, pagination.limit]
   );
 
-  // Update the handleDeactivate function:
   const handleDeactivate = useCallback(
     async (codeId: number) => {
       try {
         setError(null);
         const response = await subscriptionApi.deactivateCode(codeId);
         if (response.status === 'success') {
+          toast.success('Code deactivated successfully');
           await loadCodes();
         } else {
-          setError(response.message || 'Failed to deactivate code');
+          toast.error(response.message || 'Failed to deactivate code');
         }
       } catch (error) {
-        setError(
-          error instanceof Error ? error.message : 'Failed to deactivate code'
-        );
+        toast.error('Failed to deactivate code');
         console.error('Failed to deactivate code:', error);
       }
     },
@@ -158,9 +144,7 @@ export default function Codes() {
   );
 
   useEffect(() => {
-    if (mounted) {
-      loadCodes();
-    }
+    if (mounted) loadCodes();
   }, [loadCodes, mounted]);
 
   useEffect(() => {
@@ -195,12 +179,30 @@ export default function Codes() {
   }, [mounted]);
 
   const filteredCodes = useMemo(() => {
-    console.log(filter, codes);
     return codes.filter((code) => {
       if (filter === 'all') return true;
       return filter === 'active' ? code.isActive : !code.isActive;
     });
   }, [codes, filter]);
+
+  const handleCreateCode = useCallback(
+    async (data: CreateCodeSchema) => {
+      try {
+        const response = await subscriptionApi.createCode(data);
+        if (response.status === 'success') {
+          toast.success('Code created successfully');
+          setDialogOpen(false);
+          loadCodes();
+        } else {
+          toast.error(response.message || 'Failed to create code');
+        }
+      } catch (error) {
+        toast.error('Failed to create code');
+        console.error('Failed to create code:', error);
+      }
+    },
+    [loadCodes, setDialogOpen]
+  );
 
   if (!mounted) return null;
 
@@ -259,7 +261,7 @@ export default function Codes() {
               dialogOpen={dialogOpen}
               setDialogOpen={setDialogOpen}
               form={form}
-              onSuccess={loadCodes}
+              onCreateCode={handleCreateCode}
             />
           </div>
 
@@ -300,13 +302,15 @@ export default function Codes() {
           ) : (
             <div className="flex-1">
               <TabsContent value="codes" className="h-full">
-                {isLoading ? (
-                  <div className="flex items-center justify-center h-32">
-                    <LoadingSpinner />
-                  </div>
-                ) : codes.length === 0 ? (
-                  <div className="flex items-center justify-center h-32">
-                    No codes found
+                {codes.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-48">
+                    <img
+                      src="no-codes.png"
+                      alt="No Codes Found"
+                      width={100}
+                      height={100}
+                    />
+                    <span>No Codes Found</span>
                   </div>
                 ) : (
                   <Table>
@@ -363,6 +367,7 @@ export default function Codes() {
                               <Button
                                 variant="destructive"
                                 size="sm"
+                                className="h-6 py-1 px-2"
                                 onClick={() => handleDeactivate(code.codeId)}
                               >
                                 Deactivate
