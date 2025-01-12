@@ -492,7 +492,6 @@ const CreateCodeDialog = ({
                 Failed to create code. Please try again.
               </div>
             )}
-
           </form>
         </Form>
       </DialogContent>
