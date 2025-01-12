@@ -1,4 +1,4 @@
-// src/lib/api.ts
+// src/lib/content-api.ts
 import { config } from '@/config/config';
 import type {
   ApiResponse,
@@ -7,6 +7,7 @@ import type {
   NodeType,
   RepositoryFile,
 } from '@/types';
+import { ApiError, getHeaders, handleResponse } from './api-helpers';
 
 type FetchChildrenResponse = {
   children: Node[];
@@ -26,44 +27,13 @@ interface ContentApi {
     type: NodeType,
     parentId?: number
   ) => Promise<ApiResponse<Node>>;
+  searchNodes: (query: string) => Promise<ApiResponse<Node[]>>;
   deleteNode: (id: string) => Promise<void>;
   renameNode: (id: string, newName: string) => Promise<ApiResponse<Node>>;
   uploadFile: (file: File, nodeId: string) => Promise<ApiResponse<Repository>>;
 }
 
-class ApiError extends Error {
-  constructor(message: string, public status?: number, public data?: unknown) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
-
-const getHeaders = () => {
-  const token = localStorage.getItem('auth_token');
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  return headers;
-};
-
-async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => null);
-    throw new ApiError(
-      errorData?.message || 'API request failed',
-      response.status,
-      errorData
-    );
-  }
-  return response.json();
-}
-
-export const contentApi: ContentApi = {
+export const _contentApi: ContentApi = {
   async fetchRootNodes() {
     try {
       const response = await fetch(`${config.API_URL}/nodes/parent-nodes`, {
@@ -149,6 +119,21 @@ export const contentApi: ContentApi = {
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new ApiError('Failed to rename node');
+    }
+  },
+
+  async searchNodes(query: string): Promise<ApiResponse<Node[]>> {
+    try {
+      const response = await fetch(
+        `${config.API_URL}/nodes/search?query=${encodeURIComponent(query)}`,
+        {
+          headers: getHeaders(),
+        }
+      );
+      return handleResponse(response);
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new ApiError('Failed to search nodes');
     }
   },
 

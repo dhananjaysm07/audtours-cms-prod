@@ -170,11 +170,11 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       const parsedNumber = !isRoot ? Number.parseInt(parentId) : 0;
 
       const response = isRoot
-        ? await contentApi.createNode(name, type)
+        ? await contentApi.createNode(name, type, null)
         : await contentApi.createNode(name, type, parsedNumber);
 
       const newItem = transformNodeToContentItem(response.data);
-      toast.success('Folder created successfully');
+      if (response.status === 'success') toast.success('Folder created');
       // Update items and maintain sort order
       set((state) => {
         const newItems = [...state.items, newItem];

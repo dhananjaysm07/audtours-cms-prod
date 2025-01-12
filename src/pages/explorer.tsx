@@ -44,7 +44,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ContentItem, NodeType, FolderItemType, RepositoryKind } from '@/types';
+import { ContentItem, NodeType, FolderItemType } from '@/types';
 import LoadingSpinner from '@/components/spinner';
 import { toast } from 'sonner';
 import { capitalize } from '@/lib/utils';
@@ -171,10 +171,7 @@ const UploadDialog = ({ allowedTypes = ['image', 'audio'] }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger
-        // asChild
-        disabled={isUploadDisabled}
-      >
+      <DialogTrigger asChild>
         <Button
           size="sm"
           variant="secondary"
@@ -219,8 +216,6 @@ const CreateFolderDialog = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [folderName, setFolderName] = useState('');
   const [folderType, setFolderType] = useState('');
-
-  console.log(currentPath);
 
   const handleCreate = async () => {
     if (folderName && folderType) {

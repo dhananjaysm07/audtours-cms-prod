@@ -1,7 +1,7 @@
 // src/store/useAuthStore.ts
 import { create } from 'zustand';
-import { authApi } from '@/lib/authApi';
 import type { User } from '@/types';
+import { authApi } from '@/lib/api';
 
 interface AuthState {
   token: string | null;
@@ -44,13 +44,19 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     try {
       const response = await authApi.login(email, password);
 
+      if (response.status === 'error' || !response.data) {
+        throw new Error(response.message || 'Login failed');
+      }
+
+      const { token, user } = response.data;
+
       // Store token and user data
-      localStorage.setItem('auth_token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('user', JSON.stringify(user));
 
       set({
-        token: response.data.token,
-        user: response.data.user,
+        token,
+        user,
         isAuthenticated: true,
         isLoading: false,
       });
