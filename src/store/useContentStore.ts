@@ -1,6 +1,6 @@
 // useContentStore.ts
-import { create } from 'zustand';
-import { contentApi } from '@/lib/api';
+import { create } from "zustand";
+import { contentApi } from "@/lib/api";
 import {
   type ContentState,
   type ContentActions,
@@ -11,8 +11,8 @@ import {
   FOLDER_ITEM_TYPE,
   NodeType,
   REPOSITORY_KINDS,
-} from '@/types';
-import { toast } from 'sonner';
+} from "@/types";
+import { toast } from "sonner";
 
 const transformNodeToContentItem = (node: Node): ContentItem => ({
   id: node.id.toString(),
@@ -27,7 +27,7 @@ const transformNodeToContentItem = (node: Node): ContentItem => ({
 
 const transformRepositoryToContentItem = (repo: Repository): ContentItem => ({
   id: `_repo:${repo.id}`,
-  name: repo.type === REPOSITORY_KINDS.AUDIO ? 'Audio' : 'Gallery',
+  name: repo.type === REPOSITORY_KINDS.AUDIO ? "Audio" : "Gallery",
   type: FOLDER_ITEM_TYPE.REPOSITORY,
   repoType: repo.type,
   createdAt: repo.createdAt,
@@ -51,15 +51,15 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
   items: [],
   selectedItems: [],
   sortedItems: [],
-  sortBy: 'name',
-  sortOrder: 'asc',
+  sortBy: "name",
+  sortOrder: "asc",
   isProcessing: false,
   error: null,
   isLoading: false,
   currentPath: [
     {
-      id: 'root',
-      name: 'Home',
+      id: "root",
+      name: "Home",
       type: FOLDER_ITEM_TYPE.FOLDER,
     },
   ],
@@ -70,14 +70,14 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       // Handle root navigation
-      if (id === 'root') {
+      if (id === "root") {
         const response = await contentApi.fetchRootNodes();
         const contentItems = response.data.map(transformNodeToContentItem);
         set({
           items: contentItems,
           sortedItems: contentItems,
           currentPath: [
-            { id: 'root', name: 'Home', type: FOLDER_ITEM_TYPE.FOLDER },
+            { id: "root", name: "Home", type: FOLDER_ITEM_TYPE.FOLDER },
           ],
           isLoading: false,
         });
@@ -89,18 +89,18 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       let newPath = [...currentState.currentPath];
 
       // If pathIndex is provided, truncate the path to that index
-      if (typeof pathIndex === 'number') {
+      if (typeof pathIndex === "number") {
         newPath = newPath.slice(0, pathIndex + 1);
       }
 
       // Handle repository navigation
-      if (id.startsWith('_repo:')) {
-        const repoId = id.replace('_repo:', '');
+      if (id.startsWith("_repo:")) {
+        const repoId = id.replace("_repo:", "");
         const response = await contentApi.fetchRepositoryFiles(repoId);
         const contentItems = response.data.map(transformFileToContentItem);
 
         // Only add to path if not clicking breadcrumb
-        if (typeof pathIndex === 'undefined') {
+        if (typeof pathIndex === "undefined") {
           const repoItem = currentState.items.find((item) => item.id === id);
           if (repoItem) {
             newPath.push({
@@ -130,7 +130,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       const contentItems = [...nodes, ...repositories];
 
       // Only add to path if not clicking breadcrumb
-      if (typeof pathIndex === 'undefined') {
+      if (typeof pathIndex === "undefined") {
         const clickedItem = currentState.items.find((item) => item.id === id);
         if (clickedItem) {
           newPath.push({
@@ -157,7 +157,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       });
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Navigation failed',
+        error: error instanceof Error ? error.message : "Navigation failed",
         isLoading: false,
       });
     }
@@ -166,7 +166,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
   createNode: async (name: string, type: NodeType, parentId: string | null) => {
     set({ isProcessing: true, error: null });
     try {
-      const isRoot = parentId === null || parentId === 'root';
+      const isRoot = parentId === null || parentId === "root";
       const parsedNumber = !isRoot ? Number.parseInt(parentId) : 0;
 
       const response = isRoot
@@ -192,7 +192,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       });
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Failed to create node',
+        error: error instanceof Error ? error.message : "Failed to create node",
         isProcessing: false,
       });
     }
@@ -210,7 +210,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       set({ isProcessing: false });
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Upload failed',
+        error: error instanceof Error ? error.message : "Upload failed",
         isProcessing: false,
       });
     }
@@ -228,7 +228,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       }));
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Delete failed',
+        error: error instanceof Error ? error.message : "Delete failed",
         isProcessing: false,
       });
     }
@@ -267,20 +267,20 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       });
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Rename failed',
+        error: error instanceof Error ? error.message : "Rename failed",
         isProcessing: false,
       });
     }
   },
 
-  setSortBy: (sortBy: ContentState['sortBy']) => {
+  setSortBy: (sortBy: ContentState["sortBy"]) => {
     set((state) => {
       const sortedItems = sortItems(state.items, sortBy, state.sortOrder);
       return { sortBy, sortedItems };
     });
   },
 
-  setSortOrder: (sortOrder: ContentState['sortOrder']) => {
+  setSortOrder: (sortOrder: ContentState["sortOrder"]) => {
     set((state) => {
       const sortedItems = sortItems(state.items, state.sortBy, sortOrder);
       return { sortOrder, sortedItems };
@@ -299,24 +299,24 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
 // Helper function for sorting items
 const sortItems = (
   items: ContentItem[],
-  sortBy: ContentState['sortBy'],
-  sortOrder: ContentState['sortOrder']
+  sortBy: ContentState["sortBy"],
+  sortOrder: ContentState["sortOrder"]
 ): ContentItem[] => {
   return [...items].sort((a, b) => {
-    if (sortBy === 'name') {
-      return sortOrder === 'asc'
-        ? (a.name || '').localeCompare(b.name || '')
-        : (b.name || '').localeCompare(a.name || '');
+    if (sortBy === "name") {
+      return sortOrder === "asc"
+        ? (a.name || "").localeCompare(b.name || "")
+        : (b.name || "").localeCompare(a.name || "");
     }
 
-    if (sortBy === 'date') {
-      return sortOrder === 'asc'
+    if (sortBy === "date") {
+      return sortOrder === "asc"
         ? a.createdAt.localeCompare(b.createdAt)
         : b.createdAt.localeCompare(a.createdAt);
     }
 
-    if (sortBy === 'size' && a.size && b.size) {
-      return sortOrder === 'asc' ? a.size - b.size : b.size - a.size;
+    if (sortBy === "size" && a.size && b.size) {
+      return sortOrder === "asc" ? a.size - b.size : b.size - a.size;
     }
 
     return 0;

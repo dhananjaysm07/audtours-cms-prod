@@ -1,0 +1,56 @@
+Content Page:-
+
+1. Home Page
+    API Name: Get Parent Node
+      [{
+            "id": 1,
+            "name": "Node 1",
+            "type": "location",
+            "level": 1,
+            "path": "/Node 1",
+            "parentId": null,
+            "createdAt": "2024-12-29T17:38:26.959Z",
+            "updatedAt": "2024-12-29T17:38:26.959Z",
+            "repositories": [
+                {
+                    "id": 1,
+                    "nodeId": 1,
+                    "type": "gallery",
+                    "createdAt": "2024-12-29T17:38:26.970Z",
+                    "updatedAt": "2024-12-29T17:38:26.970Z"
+                }
+            ]    ///Mantain this state in nested folder
+        }]
+
+2. Home>Parent Node
+    API Name: Get Child Node
+        [
+            {
+            "id": 9,
+            "name": "Map 4 Spot 1",
+            "type": "spot",
+            "level": 3,
+            "path": "/Node 2/Map 3/Map 4 Spot 1",
+            "parentId": 7,
+            "createdAt": "2024-12-29T20:38:21.977Z",
+            "updatedAt": "2024-12-29T20:38:21.977Z",
+            "repositories": [
+                {
+                    "id": 15,
+                    "nodeId": 9,
+                    "type": "gallery",
+                    "createdAt": "2024-12-29T20:38:21.990Z",
+                    "updatedAt": "2024-12-29T20:38:21.990Z"
+                },
+                {
+                    "id": 16,
+                    "nodeId": 9,
+                    "type": "audio",
+                    "createdAt": "2024-12-29T20:38:21.990Z",
+                    "updatedAt": "2024-12-29T20:38:21.990Z"
+                }
+            ]
+        },
+        ]
+
+3. Home>Parent Node>Child Node> Repo 1
