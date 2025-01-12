@@ -11,6 +11,7 @@ import {
   FOLDER_ITEM_TYPE,
   NodeType,
   REPOSITORY_KINDS,
+  UploadFiledata,
 } from "@/types";
 import { toast } from "sonner";
 
@@ -38,6 +39,7 @@ const transformFileToContentItem = (file: RepositoryFile): ContentItem => ({
   id: file.id.toString(),
   name: file.name,
   type: FOLDER_ITEM_TYPE.FILE,
+  path: file.path,
   repoId: file.repoId,
   filename: file.filename,
   size: file.size,
@@ -198,10 +200,10 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
     }
   },
 
-  uploadFile: async (file: File, nodeId: string) => {
+  uploadFile: async (uploadFileData) => {
     set({ isProcessing: true, error: null });
     try {
-      await contentApi.uploadFile(file, nodeId);
+      await contentApi.uploadFile(uploadFileData);
       // Refresh current folder with current path index
       const currentState = get();
       const currentIndex = currentState.currentPath.length - 1;

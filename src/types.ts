@@ -1,20 +1,20 @@
 // Constants
 export const FOLDER_ITEM_TYPE = {
-  FOLDER: 'folder',
-  FILE: 'file',
-  REPOSITORY: 'repository',
+  FOLDER: "folder",
+  FILE: "file",
+  REPOSITORY: "repository",
 } as const;
 
 export const REPOSITORY_KINDS = {
-  AUDIO: 'audio',
-  GALLERY: 'gallery',
+  AUDIO: "audio",
+  GALLERY: "gallery",
 } as const;
 
 export const NODE_TYPES = {
-  MAP: 'map',
-  LOCATION: 'location',
-  SPOT: 'spot',
-  STOP: 'stop',
+  MAP: "map",
+  LOCATION: "location",
+  SPOT: "spot",
+  STOP: "stop",
 } as const;
 
 // Type Utilities
@@ -88,13 +88,21 @@ export interface ImageMetadata {
   createdAt: string;
 }
 
+export interface UploadFiledata {
+  file: File;
+  name: string;
+  position: number | null;
+  repoId: string;
+  force_position: boolean;
+}
+
 // Store state interfaces
 export interface ContentState {
   items: ContentItem[];
   selectedItems: string[];
   sortedItems: ContentItem[];
-  sortBy: 'name' | 'date' | 'size';
-  sortOrder: 'asc' | 'desc';
+  sortBy: "name" | "date" | "size";
+  sortOrder: "asc" | "desc";
   isProcessing: boolean;
   error: string | null;
   isLoading: boolean;
@@ -115,11 +123,11 @@ export interface ContentActions {
     type: NodeType,
     parentId: string | null
   ) => Promise<void>;
-  uploadFile: (file: File, nodeId: string) => Promise<void>;
+  uploadFile: (uploadFiledata: UploadFiledata) => Promise<void>;
   deleteNode: (id: string) => Promise<void>;
   renameNode: (id: string, newName: string) => Promise<void>;
-  setSortBy: (sortBy: ContentState['sortBy']) => void;
-  setSortOrder: (sortOrder: ContentState['sortOrder']) => void;
+  setSortBy: (sortBy: ContentState["sortBy"]) => void;
+  setSortOrder: (sortOrder: ContentState["sortOrder"]) => void;
   toggleItemSelection: (id: string) => void;
 }
 
@@ -133,11 +141,11 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'user';
+  role: "admin" | "user";
 }
 
 export interface AuthResponse {
-  status: 'success' | 'error';
+  status: "success" | "error";
   data: {
     token: string;
     user: User;

@@ -6,6 +6,7 @@ import type {
   Repository,
   NodeType,
   RepositoryFile,
+  UploadFiledata,
 } from "@/types";
 
 type FetchChildrenResponse = {
@@ -28,7 +29,9 @@ interface ContentApi {
   ) => Promise<ApiResponse<Node>>;
   deleteNode: (id: string) => Promise<void>;
   renameNode: (id: string, newName: string) => Promise<ApiResponse<Node>>;
-  uploadFile: (file: File, nodeId: string) => Promise<ApiResponse<Repository>>;
+  uploadFile: (
+    uploadFileData: UploadFiledata
+  ) => Promise<ApiResponse<Repository>>;
 }
 
 class ApiError extends Error {
@@ -152,19 +155,24 @@ export const contentApi: ContentApi = {
     }
   },
 
-  async uploadFile(file, nodeId) {
+  async uploadFile(uploadFiledata) {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("auth_token");
       const formData = new FormData();
-      formData.append("file", file);
-      formData.append("nodeId", nodeId);
-      const response = await fetch(`${config.API_URL}/repo/${nodeId}/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
+      formData.append("file", uploadFiledata.file);
+      formData.append("name", uploadFiledata.name);
+      formData.append("position", String(uploadFiledata.position));
+      formData.append("force_position", String(uploadFiledata.force_position));
+      const response = await fetch(
+        `${config.API_URL}/repo/${uploadFiledata.repoId}/upload`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
       return handleResponse(response);
     } catch (error) {
       if (error instanceof ApiError) throw error;

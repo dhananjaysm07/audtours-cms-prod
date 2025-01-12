@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { useContentStore } from '@/store/useContentStore';
-import { ContentItem } from '@/types';
+import React, { useState } from "react";
+import { useContentStore } from "@/store/useContentStore";
+import { ContentItem } from "@/types";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from '@/components/ui/context-menu';
+} from "@/components/ui/context-menu";
 import {
   Dialog,
   DialogContent,
@@ -14,11 +14,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import {
   FolderOpen,
   Eye,
@@ -30,17 +30,17 @@ import {
   Folder,
   Music,
   Image as ImageIcon,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import ImageViewer from './image-viewer';
-import { config } from '@/config/config';
+} from "lucide-react";
+import { toast } from "sonner";
+import ImageViewer from "./image-viewer";
+import { config } from "@/config/config";
 
 interface FolderItemProps {
   item: ContentItem;
 }
 
 const getFolderItemIcon = (item: ContentItem) => {
-  if (item.type === 'folder') {
+  if (item.type === "folder") {
     return (
       <Folder
         size={56}
@@ -51,7 +51,7 @@ const getFolderItemIcon = (item: ContentItem) => {
   }
 
   // Handle repositories
-  if (item.type === 'repository' && item.repoType === 'gallery') {
+  if (item.type === "repository" && item.repoType === "gallery") {
     return (
       <div className="relative">
         <ImageIcon
@@ -68,7 +68,7 @@ const getFolderItemIcon = (item: ContentItem) => {
     );
     // return <ImageIcon size={56} className="text-green-500" strokeWidth={1.5} />;
   }
-  if (item.type === 'repository' && item.repoType === 'audio') {
+  if (item.type === "repository" && item.repoType === "audio") {
     return (
       <div className="relative">
         <Music
@@ -84,7 +84,9 @@ const getFolderItemIcon = (item: ContentItem) => {
       </div>
     );
   }
-  if (item.type === 'file' && item.mimeType?.startsWith('image')) {
+
+  console.log("Image Data:-", item.path, item);
+  if (item.type === "file" && item.mimeType?.startsWith("image")) {
     return <img src={item.path} width={100} height={100} />;
   }
   return <File size={56} className="text-gray-500" strokeWidth={1.5} />;
@@ -109,10 +111,10 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
     selectedItems.forEach((id) => toggleItemSelection(id));
     toggleItemSelection(item.id);
     // Navigate when using folder or repository
-    if (item.type === 'folder' || item.type === 'repository')
+    if (item.type === "folder" || item.type === "repository")
       navigateTo(item.id);
 
-    if (item.type === 'file' && item.mimeType?.startsWith('image')) {
+    if (item.type === "file" && item.mimeType?.startsWith("image")) {
       setIsImageViewerOpen(true);
     }
 
@@ -132,9 +134,9 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
     try {
       await renameNode(item.id, newItemName);
       setIsRenameDialogOpen(false);
-      toast.success('Item renamed successfully');
+      toast.success("Item renamed successfully");
     } catch (error) {
-      toast.error('Failed to rename item');
+      toast.error("Failed to rename item");
     }
   };
 
@@ -142,9 +144,9 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
     try {
       await deleteNode(item.id);
       setIsDeleteDialogOpen(false);
-      toast.success('Item deleted successfully');
+      toast.success("Item deleted successfully");
     } catch (error) {
-      toast.error('Failed to delete item');
+      toast.error("Failed to delete item");
     }
   };
 
@@ -156,8 +158,8 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
             onClick={handleSelection}
             onDoubleClick={handleDoubleClick}
             className={cn(
-              'h-28 aspect-square flex flex-col items-center focus-visible:outline hover:bg-blue-50 justify-center shrink-0 rounded-lg',
-              isItemSelected && 'bg-blue-50 outline outline-blue-200'
+              "h-28 aspect-square flex flex-col items-center focus-visible:outline hover:bg-blue-50 justify-center shrink-0 rounded-lg",
+              isItemSelected && "bg-blue-50 outline outline-blue-200"
             )}
             tabIndex={0}
           >
@@ -173,15 +175,15 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
             onSelect={handleOpen}
           >
             <span>
-              {item.type === 'file' && item.mimeType?.startsWith('audio')
-                ? 'Play'
-                : item.type === 'file' && item.mimeType?.startsWith('image')
-                ? 'View'
-                : 'Open'}
+              {item.type === "file" && item.mimeType?.startsWith("audio")
+                ? "Play"
+                : item.type === "file" && item.mimeType?.startsWith("image")
+                ? "View"
+                : "Open"}
             </span>
-            {item.type === 'file' && item.mimeType?.startsWith('audio') ? (
+            {item.type === "file" && item.mimeType?.startsWith("audio") ? (
               <Play size={16} className="text-neutral-600" strokeWidth={1.5} />
-            ) : item.type === 'file' && item.mimeType?.startsWith('image') ? (
+            ) : item.type === "file" && item.mimeType?.startsWith("image") ? (
               <Eye size={16} className="text-neutral-600" strokeWidth={1.5} />
             ) : (
               <FolderOpen
@@ -303,13 +305,13 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
                 {new Date(item.createdAt).toLocaleString()}
               </span>
             </div>
-            {item.type === 'repository' && item.repoType === 'gallery' && (
+            {item.type === "repository" && item.repoType === "gallery" && (
               <div className="flex gap-2 items-center">
                 <Label>Repository</Label>
                 <span className="text-neutral-700 text-sm">Gallery</span>
               </div>
             )}
-            {item.type === 'repository' && item.repoType === 'audio' && (
+            {item.type === "repository" && item.repoType === "audio" && (
               <div className="flex gap-2 items-center">
                 <Label>Repository</Label>
                 <span className="text-neutral-700 text-sm">Audio</span>
@@ -319,7 +321,7 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
         </DialogContent>
       </Dialog>
 
-      {item.mimeType?.startsWith('image') && item.path && (
+      {item.mimeType?.startsWith("image") && item.path && (
         <ImageViewer
           isOpen={isImageViewerOpen}
           imageUrl={item.path}

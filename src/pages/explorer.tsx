@@ -30,6 +30,27 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormMessage,
+  FormLabel,
+} from "@/components/ui/form";
+
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -44,10 +65,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ContentItem, NodeType, FolderItemType, RepositoryKind } from "@/types";
+import { ContentItem, NodeType, FolderItemType } from "@/types";
 import LoadingSpinner from "@/components/spinner";
 import { toast } from "sonner";
 import { capitalize } from "@/lib/utils";
+import { useForm, FormProvider } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 interface PathSegment {
   id: string;
@@ -56,6 +80,14 @@ interface PathSegment {
   nodeType?: string;
   repoType?: string;
 }
+
+const UploadDialogSchema = z.object({
+  file: z.instanceof(File).optional(),
+  name: z.string().min(1, "Name is required"),
+  position: z.string().optional(),
+});
+
+type UploadDialogFormState = z.infer<typeof UploadDialogSchema>;
 
 const getBreadcrumb = (
   currentPath: PathSegment[],
@@ -130,10 +162,20 @@ const isFileUploadAvailable = ({ type }: { type: FolderItemType }) => {
 };
 
 const UploadDialog = ({ allowedTypes = ["image", "audio"] }) => {
+  const form = useForm<UploadDialogFormState>({
+    resolver: zodResolver(UploadDialogSchema),
+    defaultValues: {
+      file: undefined,
+      name: "",
+      position: "",
+    },
+  });
+
   const { uploadFile, isProcessing, isLoading, currentPath } =
     useContentStore();
   const [isOpen, setIsOpen] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [conflictMessage, setConflictMessage] = useState("");
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -141,63 +183,146 @@ const UploadDialog = ({ allowedTypes = ["image", "audio"] }) => {
       selectedFile &&
       allowedTypes.some((type) => selectedFile.type.startsWith(`${type}/`))
     ) {
-      setFile(selectedFile);
+      form.setValue("file", selectedFile);
     } else {
       toast.error("Invalid file type. Please select an image or audio file.");
     }
   };
 
-  const currentNode = currentPath[currentPath.length - 1];
-
-  const handleUpload = async () => {
-    if (!file) return;
-
+  const handleUpload = async (
+    data: UploadDialogFormState,
+    forcePosition = false
+  ) => {
+    if (!data.file) return;
+    console.log("Upload File:-", data.file);
     try {
       const currentNodeId = currentPath[currentPath.length - 1].id;
-      await uploadFile(file, currentNodeId.split(":")[1]);
-      setIsOpen(false);
-      setFile(null);
-      toast.success("File uploaded successfully");
+      const position = data.position ? parseInt(data.position) : null;
+
+      const uploadData = {
+        file: data.file,
+        name: data.name,
+        position,
+        repoId: currentNodeId.split(":")[1],
+        force_position: forcePosition,
+      };
+
+      const response = await uploadFile(uploadData);
+      console.log(response);
+      // setIsOpen(false);
+      // form.reset();
+      // toast.success("File uploaded successfully");
     } catch (error) {
+      console.log("error uploading file", error);
+      if ((error as { status: number }).status === 409) {
+        setConflictMessage((error as { message: string }).message);
+        setShowConflictDialog(true);
+        form.reset(data);
+        return;
+      }
       console.error(error);
       toast.error("Failed to upload file");
     }
   };
 
-  const isUploadDisabled =
-    isProcessing ||
-    isLoading ||
-    !isFileUploadAvailable({ type: currentNode.type });
-
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger
-        // asChild
-        disabled={isUploadDisabled}
+    <>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger>
+          <Button size="sm" variant="secondary" className="min-w-0">
+            <FileUp size={16} />
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload File</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit((data) => handleUpload(data))}
+              className="space-y-4"
+            >
+              <FormField
+                control={form.control}
+                name="file"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>File</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="file"
+                        onChange={handleFileChange}
+                        accept={allowedTypes
+                          .map((type) => `${type}/*`)
+                          .join(",")}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input type="text" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="position"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Position (optional)</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button
+                type="submit"
+                disabled={!form.watch("file") || isProcessing}
+              >
+                Upload
+              </Button>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={showConflictDialog}
+        onOpenChange={setShowConflictDialog}
       >
-        <Button
-          size="sm"
-          variant="secondary"
-          className="min-w-0"
-          disabled={isUploadDisabled}
-        >
-          <FileUp size={16} />
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Upload File</DialogTitle>
-        </DialogHeader>
-        <Input
-          type="file"
-          onChange={handleFileChange}
-          accept={allowedTypes.map((type) => `${type}/*`).join(",")}
-        />
-        <Button onClick={handleUpload} disabled={!file || isProcessing}>
-          Upload
-        </Button>
-      </DialogContent>
-    </Dialog>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Position Conflict</AlertDialogTitle>
+            <AlertDialogDescription>{conflictMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowConflictDialog(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowConflictDialog(false);
+                handleUpload(form.getValues(), true);
+              }}
+            >
+              Add Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 
