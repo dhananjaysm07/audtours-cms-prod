@@ -19,7 +19,8 @@ function AppSidebar() {
   const { pathname } = useLocation();
   const pathnameInitial =
     pathname.split('/').length > 1 ? pathname.split('/')[1] : '';
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
+
   return (
     <Sidebar className="pr-0" variant="inset" side="left">
       <SidebarHeader className="pt-4">
@@ -66,7 +67,12 @@ function AppSidebar() {
               {user?.role === 'admin' ? 'Administrator' : 'Content Manager'}
             </span>
           </div>
-          <Button variant={'ghost'} size={'sm'} className="p-1 min-h-0 min-w-0">
+          <Button
+            variant={'ghost'}
+            size={'sm'}
+            className="p-1 min-h-0 min-w-0"
+            onClick={logout}
+          >
             <LogOut />
           </Button>
         </div>
