@@ -105,6 +105,8 @@ export interface ContentState {
   sortOrder: "asc" | "desc";
   isProcessing: boolean;
   error: string | null;
+  error_status: number | null;
+  display_error: boolean;
   isLoading: boolean;
   currentPath: Array<{
     id: string;
@@ -133,8 +135,12 @@ export interface ContentActions {
 
 // API interfaces
 export interface ApiResponse<T> {
-  status: string;
+  status: "success" | "error";
   data: T;
+  meta?: {
+    pagination: PaginationMeta;
+  };
+  message?: string;
 }
 
 export interface User {
@@ -144,7 +150,11 @@ export interface User {
   role: "admin" | "user";
 }
 
-export interface AuthResponse {
+export interface AuthResponse
+  extends ApiResponse<{
+    token: string;
+    user: User;
+  }> {
   status: "success" | "error";
   data: {
     token: string;
@@ -152,3 +162,44 @@ export interface AuthResponse {
   };
   message: string;
 }
+
+export type FetchChildrenResponse = {
+  children: Node[];
+  repositories: Repository[];
+};
+
+export type CreateCodeData = {
+  nodeIds: number[];
+  validFrom: string; // ISO date string
+  validTo: string; // ISO date string
+  maxUsers: number;
+};
+
+export interface CodeNode {
+  nodeId: number;
+  name: string;
+  path: string;
+  type: string;
+}
+
+export interface CodeResponse {
+  codeId: number; // Using codeId instead of id
+  code: string;
+  validFrom: string;
+  validTo: string;
+  maxUsers: number;
+  usedCount: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  nodes: CodeNode[];
+}
+
+export type PaginationMeta = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export type GetCodesResponse = CodeResponse[];

@@ -1,6 +1,6 @@
 // useContentStore.ts
 import { create } from "zustand";
-import { contentApi } from "@/lib/api";
+import { ApiError, contentApi } from "@/lib/api";
 import {
   type ContentState,
   type ContentActions,
@@ -11,7 +11,6 @@ import {
   FOLDER_ITEM_TYPE,
   NodeType,
   REPOSITORY_KINDS,
-  UploadFiledata,
 } from "@/types";
 import { toast } from "sonner";
 
@@ -57,6 +56,8 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
   sortOrder: "asc",
   isProcessing: false,
   error: null,
+  error_status: null,
+  display_error: false,
   isLoading: false,
   currentPath: [
     {
@@ -161,6 +162,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : "Navigation failed",
         isLoading: false,
+        display_error: true,
       });
     }
   },
@@ -172,11 +174,11 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       const parsedNumber = !isRoot ? Number.parseInt(parentId) : 0;
 
       const response = isRoot
-        ? await contentApi.createNode(name, type)
+        ? await contentApi.createNode(name, type, null)
         : await contentApi.createNode(name, type, parsedNumber);
 
       const newItem = transformNodeToContentItem(response.data);
-      toast.success("Folder created successfully");
+      if (response.status === "success") toast.success("Folder created");
       // Update items and maintain sort order
       set((state) => {
         const newItems = [...state.items, newItem];
@@ -196,6 +198,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : "Failed to create node",
         isProcessing: false,
+        display_error: true,
       });
     }
   },
@@ -209,11 +212,18 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       const currentIndex = currentState.currentPath.length - 1;
       const currentId = currentState.currentPath[currentIndex].id;
       await get().navigateTo(currentId, currentIndex);
-      set({ isProcessing: false });
+      console.log("Change in error:-", {
+        isProcessing: false,
+        error: null,
+        error_status: null,
+      });
+      set({ isProcessing: false, error: null, error_status: null });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : "Upload failed",
+        error_status: error instanceof ApiError ? error.status : 500,
         isProcessing: false,
+        display_error: error instanceof ApiError ? error.status != 409 : true,
       });
     }
   },
@@ -232,6 +242,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : "Delete failed",
         isProcessing: false,
+        display_error: true,
       });
     }
   },
@@ -271,6 +282,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : "Rename failed",
         isProcessing: false,
+        display_error: true,
       });
     }
   },

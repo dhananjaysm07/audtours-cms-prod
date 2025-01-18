@@ -1,7 +1,7 @@
 // src/store/useAuthStore.ts
-import { create } from 'zustand';
-import { authApi } from '@/lib/authApi';
-import type { User } from '@/types';
+import { create } from "zustand";
+import type { User } from "@/types";
+import { authApi } from "@/lib/api";
 
 interface AuthState {
   token: string | null;
@@ -19,21 +19,21 @@ interface AuthActions {
 }
 
 const getStoredUser = (): User | null => {
-  const storedUser = localStorage.getItem('user');
+  const storedUser = localStorage.getItem("user");
   if (!storedUser) return null;
 
   try {
     return JSON.parse(storedUser);
   } catch {
-    localStorage.removeItem('user');
+    localStorage.removeItem("user");
     return null;
   }
 };
 
 export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
-  token: localStorage.getItem('auth_token') || null,
+  token: localStorage.getItem("auth_token") || null,
   user: getStoredUser(),
-  isAuthenticated: Boolean(localStorage.getItem('auth_token')),
+  isAuthenticated: Boolean(localStorage.getItem("auth_token")),
   isLoading: false,
   error: null,
 
@@ -44,19 +44,25 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     try {
       const response = await authApi.login(email, password);
 
+      if (response.status === "error" || !response.data) {
+        throw new Error(response.message || "Login failed");
+      }
+
+      const { token, user } = response.data;
+
       // Store token and user data
-      localStorage.setItem('auth_token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem("auth_token", token);
+      localStorage.setItem("user", JSON.stringify(user));
 
       set({
-        token: response.data.token,
-        user: response.data.user,
+        token,
+        user,
         isAuthenticated: true,
         isLoading: false,
       });
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Login failed',
+        error: error instanceof Error ? error.message : "Login failed",
         isLoading: false,
         isAuthenticated: false,
         token: null,
@@ -71,11 +77,11 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     try {
       await authApi.logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     } finally {
       // Clear stored data
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("user");
 
       // Reset state
       set({
@@ -96,4 +102,4 @@ export const useIsAuthenticated = () =>
   useAuthStore((state) => state.isAuthenticated);
 export const useCurrentUser = () => useAuthStore((state) => state.user);
 export const useIsAdmin = () =>
-  useAuthStore((state) => state.user?.role === 'admin');
+  useAuthStore((state) => state.user?.role === "admin");

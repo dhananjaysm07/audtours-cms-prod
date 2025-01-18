@@ -1,8 +1,8 @@
-import React from 'react';
-import { Dialog, DialogContent } from './ui/dialog';
-import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { Button } from './ui/button';
-import { Minus, Plus } from 'lucide-react';
+import React from "react";
+import { Dialog, DialogContent } from "./ui/dialog";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
+import { Button } from "./ui/button";
+import { Minus, Plus } from "lucide-react";
 
 interface ImageViewerProps {
   isOpen: boolean;
@@ -17,7 +17,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
   imageUrl,
   alt,
 }) => {
-  console.log('Used image viewer');
   return (
     <div className="relative">
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -36,30 +35,30 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
                 <div className="absolute top-2 left-2 z-10 flex gap-2">
                   <Button
                     onClick={() => zoomIn()}
-                    variant={'secondary'}
-                    size={'sm'}
+                    variant={"secondary"}
+                    size={"sm"}
                     className="w-8"
                   >
                     <Plus strokeWidth={1.5} />
                   </Button>
                   <Button
                     onClick={() => zoomOut()}
-                    variant={'secondary'}
-                    size={'sm'}
+                    variant={"secondary"}
+                    size={"sm"}
                     className="w-8"
                   >
                     <Minus strokeWidth={1.5} />
                   </Button>
                   <Button
                     onClick={() => resetTransform()}
-                    variant={'secondary'}
-                    size={'sm'}
+                    variant={"secondary"}
+                    size={"sm"}
                   >
                     Reset
                   </Button>
                   <Button
                     onClick={() =>
-                      window.open(imageUrl, '_blank', 'noopener,noreferrer')
+                      window.open(imageUrl, "_blank", "noopener,noreferrer")
                     }
                     variant="secondary"
                     size="sm"

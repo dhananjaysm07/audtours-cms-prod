@@ -69,7 +69,7 @@ import { ContentItem, NodeType, FolderItemType } from "@/types";
 import LoadingSpinner from "@/components/spinner";
 import { toast } from "sonner";
 import { capitalize } from "@/lib/utils";
-import { useForm, FormProvider } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -171,11 +171,31 @@ const UploadDialog = ({ allowedTypes = ["image", "audio"] }) => {
     },
   });
 
-  const { uploadFile, isProcessing, isLoading, currentPath } =
-    useContentStore();
+  const {
+    uploadFile,
+    isProcessing,
+    isLoading,
+    currentPath,
+    error_status,
+    error,
+  } = useContentStore();
   const [isOpen, setIsOpen] = useState(false);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [conflictMessage, setConflictMessage] = useState("");
+
+  console.log("Error message:-", error);
+
+  useEffect(() => {
+    if (error_status === 409 && error) {
+      setConflictMessage(error);
+      setShowConflictDialog(true);
+      // Keep the form data for retry
+    } else if (error == null) {
+      setIsOpen(false);
+      form.reset();
+      toast.success("File uploaded successfully");
+    }
+  }, [error_status, error]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -194,11 +214,9 @@ const UploadDialog = ({ allowedTypes = ["image", "audio"] }) => {
     forcePosition = false
   ) => {
     if (!data.file) return;
-    console.log("Upload File:-", data.file);
     try {
       const currentNodeId = currentPath[currentPath.length - 1].id;
       const position = data.position ? parseInt(data.position) : null;
-
       const uploadData = {
         file: data.file,
         name: data.name,
@@ -207,13 +225,8 @@ const UploadDialog = ({ allowedTypes = ["image", "audio"] }) => {
         force_position: forcePosition,
       };
 
-      const response = await uploadFile(uploadData);
-      console.log(response);
-      // setIsOpen(false);
-      // form.reset();
-      // toast.success("File uploaded successfully");
+      await uploadFile(uploadData);
     } catch (error) {
-      console.log("error uploading file", error);
       if ((error as { status: number }).status === 409) {
         setConflictMessage((error as { message: string }).message);
         setShowConflictDialog(true);
@@ -344,8 +357,6 @@ const CreateFolderDialog = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [folderName, setFolderName] = useState("");
   const [folderType, setFolderType] = useState("");
-
-  console.log(currentPath);
 
   const handleCreate = async () => {
     if (folderName && folderType) {
@@ -479,10 +490,10 @@ const FolderView = () => {
     );
 
     if (acceptedFiles.length) {
-      const currentNodeId = currentPath[currentPath.length - 1].id;
+      // const currentNodeId = currentPath[currentPath.length - 1].id;
       for (const file of acceptedFiles) {
         try {
-          await uploadFile(file, currentNodeId);
+          // await uploadFile(file, currentNodeId);
         } catch (error) {
           console.error(error);
           toast.error(`Failed to upload ${file.name}`);
@@ -533,6 +544,7 @@ const ContentExplorer = () => {
     navigateTo,
     sortedItems,
     error,
+    display_error,
   } = useContentStore();
 
   useEffect(() => {
@@ -574,7 +586,7 @@ const ContentExplorer = () => {
   const isRoot = currentPath.length === 1;
 
   useEffect(() => {
-    if (error) toast.error(error);
+    if (error && display_error) toast.error(error);
   }, [error]);
 
   return (

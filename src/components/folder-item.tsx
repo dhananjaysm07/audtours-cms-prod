@@ -85,7 +85,6 @@ const getFolderItemIcon = (item: ContentItem) => {
     );
   }
 
-  console.log("Image Data:-", item.path, item);
   if (item.type === "file" && item.mimeType?.startsWith("image")) {
     return <img src={item.path} width={100} height={100} />;
   }
