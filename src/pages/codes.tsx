@@ -367,7 +367,7 @@ export default function Codes() {
                               <Button
                                 variant="destructive"
                                 size="sm"
-                                className="h-6 py-1 px-2"
+                                className="h-6 py-1 px-2 font-semibold"
                                 onClick={() => handleDeactivate(code.codeId)}
                               >
                                 Deactivate

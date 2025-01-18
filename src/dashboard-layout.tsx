@@ -6,22 +6,22 @@ import {
 import AppSidebar from '@/components/app-sidebar';
 import { Suspense } from 'react';
 import LoadingSpinner from '@/components/spinner';
-import { Outlet, useLocation } from 'react-router';
+import { Outlet, useLocation, useNavigate } from 'react-router';
 import sidebarOptions from './pages/sidebar-config';
 import { Toaster } from '@/components/ui/sonner';
+import { useAuthStore } from './store/useAuthStore';
 
 export default function DashboardLayout() {
   const { pathname } = useLocation();
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
   const pathnameInitial =
     pathname.split('/').length > 1 ? pathname.split('/')[1] : '';
 
-  // useEffect(() => {
-  //   const isAuthenticated = localStorage.getItem('isAuthenticated');
-  //   if (!isAuthenticated) {
-  //     navigate('/sign-in');
-  //   }
-  // }, [navigate]);
+  const { isAuthenticated } = useAuthStore();
+
+  if (!isAuthenticated) {
+    navigate('/sign-in');
+  }
 
   return (
     <SidebarProvider>
