@@ -65,7 +65,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ContentItem, NodeType, FolderItemType } from "@/types";
+import {
+  ContentItem,
+  NodeType,
+  FolderItemType,
+  FOLDER_ITEM_TYPE,
+  REPOSITORY_KINDS,
+} from "@/types";
 import LoadingSpinner from "@/components/spinner";
 import { toast } from "sonner";
 import { capitalize } from "@/lib/utils";
@@ -642,7 +648,11 @@ const ContentExplorer = () => {
           </div>
         </div>
         <FolderView />
-        <AudioPlayer />
+        {currentPath.slice(-1)?.[0]?.repoType == REPOSITORY_KINDS.AUDIO ? (
+          <AudioPlayer />
+        ) : (
+          ""
+        )}
       </div>
     </div>
   );
