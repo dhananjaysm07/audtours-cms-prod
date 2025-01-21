@@ -3,45 +3,31 @@ import { useState, useEffect, useRef } from "react";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { Languages, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-
-interface AudioItem {
-  id: string;
-  name: string;
-  type: string;
-  path: string;
-  repoId: number;
-  filename: string;
-  size: number;
-  mimeType: string;
-  position: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface AudioPlayerState {
-  currentTrackIndex: number;
-  isPlaying: boolean;
-  duration: number;
-  currentTime: number;
-}
-
 const AudioPlayer = () => {
-  const { currentPath, items } = useContentStore();
-  const [{ currentTrackIndex, isPlaying, duration, currentTime }, setState] =
-    useState<AudioPlayerState>({
-      currentTrackIndex: 0,
-      isPlaying: false,
-      duration: 0,
-      currentTime: 0,
-    });
+  const [{ currentTime, duration }, setState] = useState({
+    currentTime: 0,
+    duration: 0,
+  });
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const { isLoading } = useContentStore();
+  const {
+    items,
+    isLoading,
+    currentAudioId,
+    isAudioPlaying,
+    setIsAudioPlaying,
+    setCurrentAudio,
+  } = useContentStore();
 
-  const currentTrack: AudioItem | undefined = items[currentTrackIndex];
+  const currentTrack = items.find((item) => item.id === currentAudioId);
 
   useEffect(() => {
-    if (currentTrack) {
+    if (currentTrack?.path) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+
       audioRef.current = new Audio(currentTrack.path);
 
       const handleLoadedMetadata = () => {
@@ -59,16 +45,17 @@ const AudioPlayer = () => {
       };
 
       const handleEnded = () => {
-        setState((prev) => ({
-          ...prev,
-          isPlaying: false,
-        }));
+        setIsAudioPlaying(false);
         handleNext();
       };
 
       audioRef.current.addEventListener("loadedmetadata", handleLoadedMetadata);
       audioRef.current.addEventListener("timeupdate", handleTimeUpdate);
       audioRef.current.addEventListener("ended", handleEnded);
+
+      if (isAudioPlaying) {
+        void audioRef.current.play();
+      }
 
       return () => {
         if (audioRef.current) {
@@ -83,44 +70,45 @@ const AudioPlayer = () => {
         }
       };
     }
-  }, [currentTrack]);
+  }, [currentTrack, isAudioPlaying]);
 
   useEffect(() => {
     if (audioRef.current) {
-      if (isPlaying) {
+      if (isAudioPlaying) {
         void audioRef.current.play();
       } else {
         audioRef.current.pause();
       }
     }
-  }, [isPlaying]);
+  }, [isAudioPlaying]);
 
   const handlePlayPause = (): void => {
-    setState((prev) => ({
-      ...prev,
-      isPlaying: !prev.isPlaying,
-    }));
+    setIsAudioPlaying(!isAudioPlaying);
   };
 
   const handleNext = (): void => {
-    if (currentTrackIndex < items.length - 1) {
-      setState((prev) => ({
-        ...prev,
-        currentTrackIndex: prev.currentTrackIndex + 1,
-        isPlaying: false,
-        currentTime: 0,
-      }));
+    if (currentTrack) {
+      const currentIndex = items.findIndex(
+        (item) => item.id === currentTrack.id
+      );
+      const nextItem = items[currentIndex + 1];
+      if (nextItem) {
+        setCurrentAudio(nextItem.id);
+        setIsAudioPlaying(true);
+      }
     }
   };
 
   const handlePrevious = (): void => {
-    if (currentTrackIndex > 0) {
-      setState((prev) => ({
-        ...prev,
-        currentTrackIndex: prev.currentTrackIndex - 1,
-        isPlaying: false,
-        currentTime: 0,
-      }));
+    if (currentTrack) {
+      const currentIndex = items.findIndex(
+        (item) => item.id === currentTrack.id
+      );
+      const prevItem = items[currentIndex - 1];
+      if (prevItem) {
+        setCurrentAudio(prevItem.id);
+        setIsAudioPlaying(true);
+      }
     }
   };
 
@@ -146,12 +134,17 @@ const AudioPlayer = () => {
     return (currentTime / duration) * 100;
   };
 
-  const playDisabled: boolean = isLoading || !currentTrack;
+  const playDisabled: boolean = isLoading || !currentTrack?.path;
   const nextDisabled: boolean =
-    isLoading || currentTrackIndex >= items.length - 1;
-  const prevDisabled: boolean = isLoading || currentTrackIndex <= 0;
+    isLoading ||
+    !currentTrack ||
+    items.findIndex((item) => item.id === currentTrack.id) === items.length - 1;
+  const prevDisabled: boolean =
+    isLoading ||
+    !currentTrack ||
+    items.findIndex((item) => item.id === currentTrack.id) === 0;
 
-  if (!currentTrack) return null;
+  if (!currentTrack?.path) return null;
 
   return (
     <Drawer>
@@ -160,7 +153,7 @@ const AudioPlayer = () => {
           <div className="flex group pl-4 py-4 hover:opacity-75 hover:bg-neutral-50 hover:cursor-pointer transition-colors duration-150 shrink items-center gap-4">
             <img
               src="/public/audio_placeholder_img.jpeg"
-              alt={currentTrack.name}
+              alt={currentTrack.name || ""}
               className="md:h-16 h-10 aspect-square rounded-md object-cover"
             />
             <div className="md:grid md:grid-rows-2 flex items-center my-auto gap-1">
@@ -168,7 +161,7 @@ const AudioPlayer = () => {
                 {currentTrack.name}
               </h3>
               <span className="text-xs">
-                {Math.round(currentTrack.size / 1024)} KB
+                {Math.round((currentTrack.size || 0) / 1024)} KB
               </span>
             </div>
           </div>
@@ -186,7 +179,7 @@ const AudioPlayer = () => {
             onClick={handlePlayPause}
             disabled={playDisabled}
           >
-            {isPlaying ? (
+            {isAudioPlaying ? (
               <Pause size={32} fill="currentColor" />
             ) : (
               <Play size={32} fill="currentColor" />
@@ -205,7 +198,7 @@ const AudioPlayer = () => {
         <div className="p-8 grid grid-rows-2 grow grid-cols-1 md:grid-cols-2 md:grid-rows-1 gap-4">
           <img
             src="/public/audio_placeholder_img.jpeg"
-            alt={currentTrack.name}
+            alt={currentTrack.name || ""}
             className="h-[40dvh] md:h-[80dvh] max-w-full mx-auto aspect-square rounded-md object-cover"
           />
           <div className="flex md:gap-4 justify-end md:justify-center flex-col">
@@ -213,7 +206,7 @@ const AudioPlayer = () => {
               {currentTrack.name}
             </h3>
             <span className="text-sm">
-              {Math.round(currentTrack.size / 1024)} KB
+              {Math.round((currentTrack.size || 0) / 1024)} KB
             </span>
             <span className="flex gap-2 items-center">
               <Languages size={16} className="text-neutral-500" />
@@ -233,7 +226,7 @@ const AudioPlayer = () => {
                 onClick={handlePlayPause}
                 disabled={playDisabled}
               >
-                {isPlaying ? (
+                {isAudioPlaying ? (
                   <Pause size={32} fill="currentColor" />
                 ) : (
                   <Play size={32} fill="currentColor" />

@@ -11,6 +11,7 @@ import {
   FOLDER_ITEM_TYPE,
   NodeType,
   REPOSITORY_KINDS,
+  EditFileData,
 } from "@/types";
 import { toast } from "sonner";
 
@@ -43,6 +44,7 @@ const transformFileToContentItem = (file: RepositoryFile): ContentItem => ({
   filename: file.filename,
   size: file.size,
   mimeType: file.mimeType,
+  languageId: file.languageId,
   position: file.position,
   createdAt: file.createdAt,
   updatedAt: file.updatedAt,
@@ -57,8 +59,10 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
   isProcessing: false,
   error: null,
   error_status: null,
-  display_error: false,
+  display_toast: false,
   isLoading: false,
+  currentAudioId: null,
+  isAudioPlaying: false,
   currentPath: [
     {
       id: "root",
@@ -162,7 +166,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : "Navigation failed",
         isLoading: false,
-        display_error: true,
+        display_toast: true,
       });
     }
   },
@@ -198,7 +202,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : "Failed to create node",
         isProcessing: false,
-        display_error: true,
+        display_toast: true,
       });
     }
   },
@@ -212,18 +216,18 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       const currentIndex = currentState.currentPath.length - 1;
       const currentId = currentState.currentPath[currentIndex].id;
       await get().navigateTo(currentId, currentIndex);
-      console.log("Change in error:-", {
+      set({
         isProcessing: false,
         error: null,
         error_status: null,
+        display_toast: true,
       });
-      set({ isProcessing: false, error: null, error_status: null });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : "Upload failed",
         error_status: error instanceof ApiError ? error.status : 500,
         isProcessing: false,
-        display_error: error instanceof ApiError ? error.status != 409 : true,
+        display_toast: error instanceof ApiError ? error.status != 409 : true,
       });
     }
   },
@@ -242,7 +246,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : "Delete failed",
         isProcessing: false,
-        display_error: true,
+        display_toast: true,
       });
     }
   },
@@ -282,7 +286,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : "Rename failed",
         isProcessing: false,
-        display_error: true,
+        display_toast: true,
       });
     }
   },
@@ -292,6 +296,50 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       const sortedItems = sortItems(state.items, sortBy, state.sortOrder);
       return { sortBy, sortedItems };
     });
+  },
+
+  editFile: async (
+    repoId: string,
+    fileId: string,
+    data: EditFileData,
+    forcePosition: boolean = false
+  ) => {
+    set({ isProcessing: true, error: null });
+    try {
+      await contentApi.editFile(repoId, fileId, {
+        ...data,
+        force_position: String(forcePosition),
+      });
+
+      // Refresh current folder
+      const currentState = get();
+      const currentIndex = currentState.currentPath.length - 1;
+      const currentId = currentState.currentPath[currentIndex].id;
+      await get().navigateTo(currentId, currentIndex);
+
+      set({
+        isProcessing: false,
+        error: null,
+        error_status: null,
+        display_toast: true,
+      });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409 && !forcePosition) {
+        set({
+          error: error.message,
+          error_status: error.status,
+          isProcessing: false,
+          display_toast: false,
+        });
+      } else {
+        set({
+          error: error instanceof Error ? error.message : "Edit failed",
+          error_status: error instanceof ApiError ? error.status : 500,
+          isProcessing: false,
+          display_toast: true,
+        });
+      }
+    }
   },
 
   setSortOrder: (sortOrder: ContentState["sortOrder"]) => {
@@ -307,6 +355,25 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
         ? state.selectedItems.filter((itemId) => itemId !== id)
         : [...state.selectedItems, id],
     }));
+  },
+
+  setCurrentAudio: (id: string) => {
+    set({ currentAudioId: id });
+  },
+
+  setIsAudioPlaying: (isPlaying: boolean) => {
+    set({ isAudioPlaying: isPlaying });
+  },
+
+  playAudio: (id: string) => {
+    const { items } = get();
+    const audioIndex = items.findIndex((item) => item.id === id);
+    if (audioIndex !== -1) {
+      set({
+        currentAudioId: id,
+        isAudioPlaying: true,
+      });
+    }
   },
 }));
 

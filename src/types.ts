@@ -24,6 +24,13 @@ export type RepositoryKind =
   (typeof REPOSITORY_KINDS)[keyof typeof REPOSITORY_KINDS];
 export type NodeType = (typeof NODE_TYPES)[keyof typeof NODE_TYPES];
 
+// Upload File Dialog Box
+export type UploadDialogPropsType = {
+  isOpen: boolean;
+  setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  allowedTypes?: Array<"image" | "audio">;
+};
+
 // Base interfaces
 interface BaseItem {
   id: number;
@@ -54,6 +61,7 @@ export interface RepositoryFile extends BaseItem {
   mimeType: string;
   position: number;
   path: string;
+  languageId: number | null;
 }
 
 // Content item types
@@ -66,6 +74,7 @@ export type ContentItem = {
   path?: string;
   parentId?: number | null;
   repoId?: number;
+  languageId?: number | null;
   repoType?: RepositoryKind;
   filename?: string;
   size?: number;
@@ -96,6 +105,12 @@ export interface UploadFiledata {
   force_position: boolean;
 }
 
+export interface EditFileData {
+  name: string;
+  position: number | null;
+  languageId: number | null;
+}
+
 // Store state interfaces
 export interface ContentState {
   items: ContentItem[];
@@ -106,7 +121,7 @@ export interface ContentState {
   isProcessing: boolean;
   error: string | null;
   error_status: number | null;
-  display_error: boolean;
+  display_toast: boolean;
   isLoading: boolean;
   currentPath: Array<{
     id: string;
@@ -115,6 +130,8 @@ export interface ContentState {
     repoType?: RepositoryKind;
     nodeType?: NodeType;
   }>;
+  currentAudioId: string | null;
+  isAudioPlaying: boolean;
 }
 
 export interface ContentActions {
@@ -131,6 +148,15 @@ export interface ContentActions {
   setSortBy: (sortBy: ContentState["sortBy"]) => void;
   setSortOrder: (sortOrder: ContentState["sortOrder"]) => void;
   toggleItemSelection: (id: string) => void;
+  setCurrentAudio: (id: string) => void;
+  setIsAudioPlaying: (isPlaying: boolean) => void;
+  playAudio: (id: string) => void;
+  editFile: (
+    repoId: string,
+    fileId: string,
+    data: EditFileData,
+    forcePosition: boolean
+  ) => Promise<void>;
 }
 
 // API interfaces
@@ -182,6 +208,12 @@ export interface CodeNode {
   type: string;
 }
 
+export interface Language {
+  id: number;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+}
 export interface CodeResponse {
   codeId: number; // Using codeId instead of id
   code: string;

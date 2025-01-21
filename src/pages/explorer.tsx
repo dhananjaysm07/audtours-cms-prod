@@ -69,8 +69,8 @@ import {
   ContentItem,
   NodeType,
   FolderItemType,
-  FOLDER_ITEM_TYPE,
   REPOSITORY_KINDS,
+  UploadDialogPropsType,
 } from "@/types";
 import LoadingSpinner from "@/components/spinner";
 import { toast } from "sonner";
@@ -167,7 +167,11 @@ const isFileUploadAvailable = ({ type }: { type: FolderItemType }) => {
   return type === "repository";
 };
 
-const UploadDialog = ({ allowedTypes = ["image", "audio"] }) => {
+const UploadDialog = ({
+  allowedTypes = ["image", "audio"],
+  isOpen,
+  setIsOpen,
+}: UploadDialogPropsType) => {
   const form = useForm<UploadDialogFormState>({
     resolver: zodResolver(UploadDialogSchema),
     defaultValues: {
@@ -184,24 +188,22 @@ const UploadDialog = ({ allowedTypes = ["image", "audio"] }) => {
     currentPath,
     error_status,
     error,
+    display_toast,
   } = useContentStore();
-  const [isOpen, setIsOpen] = useState(false);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [conflictMessage, setConflictMessage] = useState("");
-
-  console.log("Error message:-", error);
 
   useEffect(() => {
     if (error_status === 409 && error) {
       setConflictMessage(error);
       setShowConflictDialog(true);
       // Keep the form data for retry
-    } else if (error == null) {
+    } else if (error == null && display_toast) {
       setIsOpen(false);
       form.reset();
       toast.success("File uploaded successfully");
     }
-  }, [error_status, error]);
+  }, [error_status, error, display_toast]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -247,11 +249,6 @@ const UploadDialog = ({ allowedTypes = ["image", "audio"] }) => {
   return (
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogTrigger>
-          <Button size="sm" variant="secondary" className="min-w-0">
-            <FileUp size={16} />
-          </Button>
-        </DialogTrigger>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Upload File</DialogTitle>
@@ -308,7 +305,7 @@ const UploadDialog = ({ allowedTypes = ["image", "audio"] }) => {
               />
               <Button
                 type="submit"
-                disabled={!form.watch("file") || isProcessing}
+                disabled={!form.watch("file") || isProcessing || isLoading}
               >
                 Upload
               </Button>
@@ -477,15 +474,8 @@ const SortDropdown = () => {
 };
 
 const FolderView = () => {
-  const {
-    isLoading,
-    sortedItems,
-    selectedItems,
-    toggleItemSelection,
-    uploadFile,
-    currentPath,
-  } = useContentStore();
-
+  const { isLoading, sortedItems, selectedItems, toggleItemSelection } =
+    useContentStore();
   const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -543,6 +533,7 @@ const FolderView = () => {
 };
 
 const ContentExplorer = () => {
+  const [isOpenUploadDialog, setIsOpenUploadDialog] = useState(false);
   const {
     isLoading,
     setIsLoading,
@@ -550,7 +541,7 @@ const ContentExplorer = () => {
     navigateTo,
     sortedItems,
     error,
-    display_error,
+    display_toast,
   } = useContentStore();
 
   useEffect(() => {
@@ -592,7 +583,7 @@ const ContentExplorer = () => {
   const isRoot = currentPath.length === 1;
 
   useEffect(() => {
-    if (error && display_error) toast.error(error);
+    if (error && display_toast) toast.error(error);
   }, [error]);
 
   return (
@@ -642,7 +633,23 @@ const ContentExplorer = () => {
             >
               <Home size={16} />
             </Button>
-            <UploadDialog />
+            <Button
+              size="sm"
+              variant="secondary"
+              className="min-w-0"
+              onClick={() => setIsOpenUploadDialog(true)}
+            >
+              <FileUp size={16} />
+            </Button>
+            {isOpenUploadDialog ? (
+              <UploadDialog
+                isOpen={isOpenUploadDialog}
+                setIsOpen={setIsOpenUploadDialog}
+              />
+            ) : (
+              ""
+            )}
+
             <CreateFolderDialog />
             <SortDropdown />
           </div>

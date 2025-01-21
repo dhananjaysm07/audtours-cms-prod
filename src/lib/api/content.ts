@@ -68,4 +68,20 @@ export default class ContentApi extends ApiClient {
       body: formData,
     });
   }
+
+  async editFile(
+    repoId: string,
+    fileId: string,
+    data: {
+      name: string;
+      position: number | null;
+      languageId?: number | null;
+      force_position: string;
+    }
+  ): Promise<ApiResponse<RepositoryFile>> {
+    return this.request(`/repo/${repoId}/files/basic-details/${fileId}`, {
+      method: "PATCH",
+      body: data,
+    });
+  }
 }

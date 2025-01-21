@@ -30,10 +30,11 @@ import {
   Folder,
   Music,
   Image as ImageIcon,
+  Edit,
 } from "lucide-react";
 import { toast } from "sonner";
 import ImageViewer from "./image-viewer";
-import { config } from "@/config/config";
+import EditFileDialog from "./edit-file-dialog";
 
 interface FolderItemProps {
   item: ContentItem;
@@ -97,13 +98,14 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
   const [isPropertiesDialogOpen, setIsPropertiesDialogOpen] = useState(false);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [newItemName, setNewItemName] = useState(item.name);
-
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const {
     navigateTo,
     selectedItems,
     toggleItemSelection,
     renameNode,
     deleteNode,
+    playAudio, // Add this
   } = useContentStore();
 
   const handleDoubleClick = () => {
@@ -117,8 +119,8 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
       setIsImageViewerOpen(true);
     }
 
-    // if (item.type === 'file' && item.mimeType?.startsWith('audio'))
-    //   setIsImageViewerOpen(true);
+    if (item.type === "file" && item.mimeType?.startsWith("audio"))
+      playAudio(item.id);
   };
   const handleOpen = handleDoubleClick;
   const isItemSelected = selectedItems.includes(item.id);
@@ -203,6 +205,18 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
               strokeWidth={1.5}
             />
           </ContextMenuItem>
+          {item.type == "file" ? (
+            <ContextMenuItem
+              className="flex gap-2 justify-between"
+              onSelect={() => setIsEditDialogOpen(true)}
+            >
+              <span>Edit</span>
+              <Edit size={16} className="text-neutral-600" strokeWidth={1.5} />
+            </ContextMenuItem>
+          ) : (
+            ""
+          )}
+
           <ContextMenuItem
             className="flex gap-2 justify-between group"
             onSelect={() => setIsDeleteDialogOpen(true)}
@@ -327,6 +341,16 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
           onClose={() => setIsImageViewerOpen}
           alt={item.name}
         />
+      )}
+
+      {isEditDialogOpen ? (
+        <EditFileDialog
+          isOpen={isEditDialogOpen}
+          onClose={() => setIsEditDialogOpen(false)}
+          item={item}
+        />
+      ) : (
+        ""
       )}
     </>
   );
