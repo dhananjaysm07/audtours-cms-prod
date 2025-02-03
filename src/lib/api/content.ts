@@ -29,9 +29,14 @@ export default class ContentApi extends ApiClient {
   async createNode(
     name: string,
     type: NodeType,
-    parentId: number | null
+    parentId: number | null,
+    code: string | null,
+    artistId: number | null
   ): Promise<ApiResponse<Node>> {
-    const body = parentId !== null ? { name, type, parentId } : { name, type };
+    const body =
+      parentId !== null
+        ? { name, type, parentId, code, artistId }
+        : { name, type, code, artistId };
     return this.request("/nodes", {
       method: "POST",
       body,
@@ -70,11 +75,11 @@ export default class ContentApi extends ApiClient {
   }
 
   async editFile(
-    repoId: string,
+    repoId: number,
     fileId: string,
     data: {
       name: string;
-      position: number | null;
+      position: number | undefined;
       languageId?: number | null;
       force_position: string;
     }
@@ -82,6 +87,30 @@ export default class ContentApi extends ApiClient {
     return this.request(`/repo/${repoId}/files/basic-details/${fileId}`, {
       method: "PATCH",
       body: data,
+    });
+  }
+
+  async editFolder(
+    nodeId: string,
+    data: {
+      name?: string;
+      artistId?: number | null;
+      code?: string | null;
+    }
+  ): Promise<ApiResponse<Node>> {
+    return this.request(`/nodes/${nodeId}/edit`, {
+      method: "PATCH",
+      body: data,
+    });
+  }
+
+  async setNodeActivation(
+    nodeId: string,
+    isActive: boolean
+  ): Promise<ApiResponse<void>> {
+    return this.request(`/nodes/${nodeId}/activation`, {
+      method: "PATCH",
+      body: { isActive },
     });
   }
 }

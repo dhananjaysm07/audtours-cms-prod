@@ -71,6 +71,7 @@ import {
   FolderItemType,
   REPOSITORY_KINDS,
   UploadDialogPropsType,
+  NODE_TYPES,
 } from "@/types";
 import LoadingSpinner from "@/components/spinner";
 import { toast } from "sonner";
@@ -78,6 +79,10 @@ import { capitalize } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLanguageStore } from "@/store/useLanguageStore";
+import LanguageManagementDialog from "@/components/LanguageManagementDialog";
+import ArtistManagementDialog from "@/components/artist-management-dialog";
+import { useArtistStore } from "@/store/useArtistStore";
 
 interface PathSegment {
   id: string;
@@ -91,6 +96,7 @@ const UploadDialogSchema = z.object({
   file: z.instanceof(File).optional(),
   name: z.string().min(1, "Name is required"),
   position: z.string().optional(),
+  languageId: z.union([z.number(), z.null()]).optional(),
 });
 
 type UploadDialogFormState = z.infer<typeof UploadDialogSchema>;
@@ -178,6 +184,7 @@ const UploadDialog = ({
       file: undefined,
       name: "",
       position: "",
+      languageId: null,
     },
   });
 
@@ -190,14 +197,20 @@ const UploadDialog = ({
     error,
     display_toast,
   } = useContentStore();
+  // console.log("Current path:-", currentPath[currentPath.length - 1]);
+  const { languages, fetchLanguages } = useLanguageStore();
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [conflictMessage, setConflictMessage] = useState("");
+  const [isAddLanguageOpen, setIsAddLanguageOpen] = useState(false);
+
+  useEffect(() => {
+    fetchLanguages();
+  }, []);
 
   useEffect(() => {
     if (error_status === 409 && error) {
       setConflictMessage(error);
       setShowConflictDialog(true);
-      // Keep the form data for retry
     } else if (error == null && display_toast) {
       setIsOpen(false);
       form.reset();
@@ -224,6 +237,7 @@ const UploadDialog = ({
     if (!data.file) return;
     try {
       const currentNodeId = currentPath[currentPath.length - 1].id;
+
       const position = data.position ? parseInt(data.position) : null;
       const uploadData = {
         file: data.file,
@@ -231,6 +245,7 @@ const UploadDialog = ({
         position,
         repoId: currentNodeId.split(":")[1],
         force_position: forcePosition,
+        languageId: data.languageId,
       };
 
       await uploadFile(uploadData);
@@ -261,7 +276,7 @@ const UploadDialog = ({
               <FormField
                 control={form.control}
                 name="file"
-                render={({ field }) => (
+                render={() => (
                   <FormItem>
                     <FormLabel>File</FormLabel>
                     <FormControl>
@@ -303,6 +318,52 @@ const UploadDialog = ({
                   </FormItem>
                 )}
               />
+              {currentPath[currentPath.length - 1].repoType ==
+                REPOSITORY_KINDS.AUDIO && (
+                <FormField
+                  control={form.control}
+                  name="languageId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Language</FormLabel>
+                      <FormControl>
+                        <div className="flex justify-between items-center">
+                          <Select
+                            value={field.value?.toString()}
+                            onValueChange={(value) =>
+                              field.onChange(value ? Number(value) : null)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select language" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {languages
+                                .filter((lang) => lang.isActive)
+                                .map((lang) => (
+                                  <SelectItem
+                                    key={lang.id}
+                                    value={lang.id.toString()}
+                                  >
+                                    {lang.name}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsAddLanguageOpen(true)}
+                          >
+                            Manage Languages
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <Button
                 type="submit"
                 disabled={!form.watch("file") || isProcessing || isLoading}
@@ -313,6 +374,11 @@ const UploadDialog = ({
           </Form>
         </DialogContent>
       </Dialog>
+
+      <LanguageManagementDialog
+        isOpen={isAddLanguageOpen}
+        onOpenChange={setIsAddLanguageOpen}
+      />
 
       <AlertDialog
         open={showConflictDialog}
@@ -357,28 +423,40 @@ const isFolderCreationAvailable = ({
 const CreateFolderDialog = () => {
   const { createNode, isProcessing, isLoading, currentPath } =
     useContentStore();
+  const { artists, fetchArtists } = useArtistStore();
   const [isOpen, setIsOpen] = useState(false);
   const [folderName, setFolderName] = useState("");
   const [folderType, setFolderType] = useState("");
+  const [code, setCode] = useState("");
+  const [artistId, setArtistId] = useState<number | null>(null);
+  const [isArtistDialogOpen, setIsArtistDialogOpen] = useState(false);
 
   const handleCreate = async () => {
     if (folderName && folderType) {
       const parentId = currentPath[currentPath.length - 1].id;
       try {
-        await createNode(folderName, folderType as NodeType, parentId);
+        await createNode(
+          folderName,
+          folderType as NodeType,
+          parentId,
+          folderType === NODE_TYPES.STOP ? code : null,
+          folderType === NODE_TYPES.STOP ? artistId : null
+        );
         setIsOpen(false);
         setFolderName("");
         setFolderType("");
+        setCode("");
+        setArtistId(null);
       } catch (error) {
         console.error(error);
         // toast.error('Failed to create folder');
       }
     }
   };
+
   const lastSegment = currentPath[currentPath.length - 1];
 
   const getAvailableTypes = () => {
-    const lastSegment = currentPath[currentPath.length - 1];
     switch (lastSegment.nodeType?.toLowerCase()) {
       case "location":
         return ["map", "spot", "stop"];
@@ -393,53 +471,97 @@ const CreateFolderDialog = () => {
     }
   };
 
+  // Fetch artists when the dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchArtists();
+    }
+  }, [isOpen, fetchArtists]);
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={
-            isLoading ||
-            isProcessing ||
-            !isFolderCreationAvailable({
-              nodeType: lastSegment.nodeType,
-              type: lastSegment.type,
-            })
-          }
-        >
-          + Create
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create Folder</DialogTitle>
-        </DialogHeader>
-        <Input
-          placeholder="Folder Name"
-          value={folderName}
-          onChange={(e) => setFolderName(e.target.value)}
-        />
-        <Select onValueChange={setFolderType}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select folder type" />
-          </SelectTrigger>
-          <SelectContent>
-            {getAvailableTypes().map((type) => (
-              <SelectItem key={type} value={type}>
-                {type.charAt(0).toUpperCase() + type.slice(1)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          onClick={handleCreate}
-          disabled={!folderName || !folderType || isProcessing}
-        >
-          Create
-        </Button>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={
+              isLoading ||
+              isProcessing ||
+              !isFolderCreationAvailable({
+                nodeType: lastSegment.nodeType,
+                type: lastSegment.type,
+              })
+            }
+          >
+            + Create
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Folder</DialogTitle>
+          </DialogHeader>
+          <Input
+            placeholder="Folder Name"
+            value={folderName}
+            onChange={(e) => setFolderName(e.target.value)}
+          />
+          <Select onValueChange={setFolderType}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select folder type" />
+            </SelectTrigger>
+            <SelectContent>
+              {getAvailableTypes().map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Conditionally render code and artist fields for 'stop' type */}
+          {folderType === NODE_TYPES.STOP && (
+            <>
+              <Input
+                placeholder="Code (optional)"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <Select onValueChange={(value) => setArtistId(Number(value))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select artist (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {artists.map((artist) => (
+                      <SelectItem key={artist.id} value={String(artist.id)}>
+                        {artist.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={() => setIsArtistDialogOpen(true)}>
+                  Manage Artists
+                </Button>
+              </div>
+            </>
+          )}
+
+          <Button
+            onClick={handleCreate}
+            disabled={!folderName || !folderType || isProcessing}
+          >
+            Create
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Artist Management Dialog */}
+      <ArtistManagementDialog
+        isOpen={isArtistDialogOpen}
+        onOpenChange={setIsArtistDialogOpen}
+      />
+    </>
   );
 };
 

@@ -24,6 +24,11 @@ const transformNodeToContentItem = (node: Node): ContentItem => ({
   parentId: node.parentId,
   createdAt: node.createdAt,
   updatedAt: node.updatedAt,
+  isActive: node.isActive,
+  code: node.code,
+  artistId: node.artistId,
+  artistName: node.artistName,
+  path:node.path
 });
 
 const transformRepositoryToContentItem = (repo: Repository): ContentItem => ({
@@ -33,6 +38,7 @@ const transformRepositoryToContentItem = (repo: Repository): ContentItem => ({
   repoType: repo.type,
   createdAt: repo.createdAt,
   updatedAt: repo.updatedAt,
+  isActive: repo.isActive,
 });
 
 const transformFileToContentItem = (file: RepositoryFile): ContentItem => ({
@@ -48,6 +54,7 @@ const transformFileToContentItem = (file: RepositoryFile): ContentItem => ({
   position: file.position,
   createdAt: file.createdAt,
   updatedAt: file.updatedAt,
+  isActive: file.isActive,
 });
 
 const useContentStore = create<ContentState & ContentActions>((set, get) => ({
@@ -171,15 +178,21 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
     }
   },
 
-  createNode: async (name: string, type: NodeType, parentId: string | null) => {
+  createNode: async (
+    name: string,
+    type: NodeType,
+    parentId: string | null,
+    code: string | null,
+    artistId: number | null
+  ) => {
     set({ isProcessing: true, error: null });
     try {
       const isRoot = parentId === null || parentId === "root";
       const parsedNumber = !isRoot ? Number.parseInt(parentId) : 0;
 
       const response = isRoot
-        ? await contentApi.createNode(name, type, null)
-        : await contentApi.createNode(name, type, parsedNumber);
+        ? await contentApi.createNode(name, type, null, code, artistId)
+        : await contentApi.createNode(name, type, parsedNumber, code, artistId);
 
       const newItem = transformNodeToContentItem(response.data);
       if (response.status === "success") toast.success("Folder created");
@@ -299,7 +312,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
   },
 
   editFile: async (
-    repoId: string,
+    repoId: number,
     fileId: string,
     data: EditFileData,
     forcePosition: boolean = false
@@ -339,6 +352,70 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
           display_toast: true,
         });
       }
+    }
+  },
+
+  editFolder: async (
+    nodeId: string,
+    data: {
+      name?: string;
+      artistId?: number | null;
+      code?: string | null;
+    }
+  ) => {
+    set({ isProcessing: true, error: null });
+    try {
+      const response = await contentApi.editFolder(nodeId, data);
+      const updatedItem = transformNodeToContentItem(response.data);
+
+      set((state) => {
+        const newItems = state.items.map((item) =>
+          item.id === nodeId ? updatedItem : item
+        );
+        const newSortedItems = sortItems(
+          newItems,
+          state.sortBy,
+          state.sortOrder
+        );
+
+        return {
+          items: newItems,
+          sortedItems: newSortedItems,
+          isProcessing: false,
+        };
+      });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : "Edit folder failed",
+        isProcessing: false,
+        display_toast: true,
+      });
+    }
+  },
+
+  setNodeActivation: async (nodeId: string, isActive: boolean) => {
+    set({ isProcessing: true, error: null });
+    try {
+      await contentApi.setNodeActivation(nodeId, isActive);
+
+      set((state) => {
+        const newItems = state.items.map((item) =>
+          item.id === nodeId ? { ...item, isActive } : item
+        );
+
+        return {
+          items: newItems,
+          sortedItems: sortItems(newItems, state.sortBy, state.sortOrder),
+          isProcessing: false,
+        };
+      });
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error ? error.message : "Activation toggle failed",
+        isProcessing: false,
+        display_toast: true,
+      });
     }
   },
 

@@ -36,6 +36,7 @@ interface BaseItem {
   id: number;
   createdAt: string;
   updatedAt: string;
+  isActive: boolean;
 }
 
 // Main interfaces
@@ -50,6 +51,9 @@ export interface Node extends BaseItem {
   level: number;
   path: string;
   parentId: number | null;
+  code: string | null;
+  artistId: number | null;
+  artistName: string | null;
 }
 
 export interface RepositoryFile extends BaseItem {
@@ -73,8 +77,11 @@ export type ContentItem = {
   level?: number;
   path?: string;
   parentId?: number | null;
+  artistId?: number | null;
+  artistName?: string | null;
   repoId?: number;
   languageId?: number | null;
+  language?: string | null;
   repoType?: RepositoryKind;
   filename?: string;
   size?: number;
@@ -82,7 +89,17 @@ export type ContentItem = {
   position?: number;
   createdAt: string;
   updatedAt: string;
+  isActive: boolean;
+  code?: string | null;
 };
+
+export interface Artist {
+  id: number;
+  name: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 // Metadata interfaces
 export interface AudioMetadata {
@@ -107,7 +124,7 @@ export interface UploadFiledata {
 
 export interface EditFileData {
   name: string;
-  position: number | null;
+  position: number | undefined;
   languageId: number | null;
 }
 
@@ -140,7 +157,9 @@ export interface ContentActions {
   createNode: (
     name: string,
     type: NodeType,
-    parentId: string | null
+    parentId: string | null,
+    code: string | null,
+    artistId: number | null
   ) => Promise<void>;
   uploadFile: (uploadFiledata: UploadFiledata) => Promise<void>;
   deleteNode: (id: string) => Promise<void>;
@@ -152,11 +171,20 @@ export interface ContentActions {
   setIsAudioPlaying: (isPlaying: boolean) => void;
   playAudio: (id: string) => void;
   editFile: (
-    repoId: string,
+    repoId: number,
     fileId: string,
     data: EditFileData,
     forcePosition: boolean
   ) => Promise<void>;
+  editFolder: (
+    nodeId: string,
+    data: {
+      name?: string;
+      artistId?: number | null;
+      code?: string | null;
+    }
+  ) => Promise<void>;
+  setNodeActivation: (nodeId: string, isActive: boolean) => Promise<void>;
 }
 
 // API interfaces

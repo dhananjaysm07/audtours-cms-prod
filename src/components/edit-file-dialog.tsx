@@ -1,4 +1,3 @@
-import { useLanguageStore } from "@/store/useLanguageStore";
 import { useEffect, useState } from "react";
 import {
   Dialog,
@@ -17,11 +16,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { Switch } from "./ui/switch";
 import { useContentStore } from "@/store/useContentStore";
 import { toast } from "sonner";
+import { ContentItem } from "@/types";
+import LanguageManagementDialog from "./LanguageManagementDialog";
+import { useLanguageStore } from "@/store/useLanguageStore";
 
-const EditFileDialog = ({ isOpen, onClose, item }) => {
+interface EditFileDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  item: ContentItem;
+}
+
+const EditFileDialog = ({ isOpen, onClose, item }: EditFileDialogProps) => {
   const { languages, fetchLanguages } = useLanguageStore();
   const [formData, setFormData] = useState({
     name: item.name,
@@ -29,13 +36,13 @@ const EditFileDialog = ({ isOpen, onClose, item }) => {
     languageId: item.languageId || null,
   });
   const [isAddLanguageOpen, setIsAddLanguageOpen] = useState(false);
-  const [newLanguageName, setNewLanguageName] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-  const { createLanguage, toggleLanguageStatus } = useLanguageStore();
   const { editFile, error, error_status } = useContentStore();
+
   useEffect(() => {
     fetchLanguages();
   }, []);
+
   useEffect(() => {
     if (isEditing && error_status == 409 && error) {
       handleSubmitAnyway();
@@ -49,7 +56,7 @@ const EditFileDialog = ({ isOpen, onClose, item }) => {
   const handleSubmit = async (forcePosition: boolean = false) => {
     setIsEditing(true);
     try {
-      await editFile(item.repoId, item.id, formData, forcePosition);
+      await editFile(item.repoId as number, item.id, formData, forcePosition);
     } catch (error) {
       toast.error("Failed to update file");
     }
@@ -76,6 +83,7 @@ const EditFileDialog = ({ isOpen, onClose, item }) => {
       setIsEditing(false);
     }
   }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
@@ -122,7 +130,7 @@ const EditFileDialog = ({ isOpen, onClose, item }) => {
                     languageId: value ? Number(value) : null,
                   })
                 }
-                defaultValue={item.languageId}
+                defaultValue={String(item.languageId)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select language" />
@@ -145,45 +153,10 @@ const EditFileDialog = ({ isOpen, onClose, item }) => {
         </DialogFooter>
       </DialogContent>
 
-      {/* Language Management Dialog */}
-      <Dialog open={isAddLanguageOpen} onOpenChange={setIsAddLanguageOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Manage Languages</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                value={newLanguageName}
-                onChange={(e) => setNewLanguageName(e.target.value)}
-                placeholder="New language name"
-              />
-              <Button
-                onClick={() => {
-                  createLanguage(newLanguageName);
-                  setNewLanguageName("");
-                }}
-              >
-                Add
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {languages.map((lang) => (
-                <div
-                  key={lang.id}
-                  className="flex justify-between items-center"
-                >
-                  <span>{lang.name}</span>
-                  <Switch
-                    checked={lang.isActive}
-                    onCheckedChange={() => toggleLanguageStatus(lang.id)}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <LanguageManagementDialog
+        isOpen={isAddLanguageOpen}
+        onOpenChange={setIsAddLanguageOpen}
+      />
     </Dialog>
   );
 };
