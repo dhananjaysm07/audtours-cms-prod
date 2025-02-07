@@ -137,7 +137,6 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
     setNodeActivation,
   } = useContentStore();
 
-  console.log("Items Data...", item);
   const handleDoubleClick = () => {
     selectedItems.forEach((id) => toggleItemSelection(id));
     toggleItemSelection(item.id);

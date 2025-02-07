@@ -28,7 +28,7 @@ const transformNodeToContentItem = (node: Node): ContentItem => ({
   code: node.code,
   artistId: node.artistId,
   artistName: node.artistName,
-  path:node.path
+  path: node.path,
 });
 
 const transformRepositoryToContentItem = (repo: Repository): ContentItem => ({
@@ -413,6 +413,42 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       set({
         error:
           error instanceof Error ? error.message : "Activation toggle failed",
+        isProcessing: false,
+        display_toast: true,
+      });
+    }
+  },
+
+  getHeirarchy: async (nodeId: number) => {
+    set({ isProcessing: true, error: null });
+    try {
+      const response = await contentApi.getHeirarchy(nodeId);
+      let newpath = response.data.map((node) => ({
+        id: String(node.id),
+        name: node.name,
+        type: FOLDER_ITEM_TYPE.FOLDER,
+        nodeType: node.type,
+      }));
+
+      set(() => {
+        return {
+          currentPath: [
+            {
+              id: "root",
+              name: "Home",
+              type: FOLDER_ITEM_TYPE.FOLDER,
+            },
+            ...newpath,
+          ],
+        };
+      });
+      await get().navigateTo(String(response.data.slice(-1)[0].id));
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unable to fetch heirarchy nodes",
         isProcessing: false,
         display_toast: true,
       });

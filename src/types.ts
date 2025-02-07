@@ -176,6 +176,7 @@ export interface ContentActions {
     data: EditFileData,
     forcePosition: boolean
   ) => Promise<void>;
+  getHeirarchy: (nodeId: number) => Promise<void>;
   editFolder: (
     nodeId: string,
     data: {
@@ -242,6 +243,19 @@ export interface Language {
   isActive: boolean;
   createdAt: string;
 }
+
+export interface Store {
+  id: number;
+  bokunId: string;
+  banner: string;
+  heading: string;
+  description: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  nodes: Node[];
+}
+
 export interface CodeResponse {
   codeId: number; // Using codeId instead of id
   code: string;
