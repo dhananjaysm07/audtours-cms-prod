@@ -83,6 +83,7 @@ import { useLanguageStore } from "@/store/useLanguageStore";
 import LanguageManagementDialog from "@/components/LanguageManagementDialog";
 import ArtistManagementDialog from "@/components/artist-management-dialog";
 import { useArtistStore } from "@/store/useArtistStore";
+import { useSearchParams } from "react-router";
 
 interface PathSegment {
   id: string;
@@ -533,11 +534,13 @@ const CreateFolderDialog = () => {
                     <SelectValue placeholder="Select artist (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    {artists.map((artist) => (
-                      <SelectItem key={artist.id} value={String(artist.id)}>
-                        {artist.name}
-                      </SelectItem>
-                    ))}
+                    {artists
+                      .filter((artist) => artist.isActive)
+                      .map((artist) => (
+                        <SelectItem key={artist.id} value={String(artist.id)}>
+                          {artist.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 <Button onClick={() => setIsArtistDialogOpen(true)}>
@@ -656,6 +659,8 @@ const FolderView = () => {
 
 const ContentExplorer = () => {
   const [isOpenUploadDialog, setIsOpenUploadDialog] = useState(false);
+  const [searchParams] = useSearchParams();
+  const parentNodeId = searchParams.get("parentNodeId");
   const {
     isLoading,
     setIsLoading,
@@ -664,8 +669,8 @@ const ContentExplorer = () => {
     sortedItems,
     error,
     display_toast,
+    getHeirarchy,
   } = useContentStore();
-
   useEffect(() => {
     const initializeStore = async () => {
       setIsLoading(true);
@@ -678,9 +683,9 @@ const ContentExplorer = () => {
         setIsLoading(false);
       }
     };
-
-    initializeStore();
-  }, [setIsLoading, navigateTo]);
+    if (!parentNodeId) initializeStore();
+    else getHeirarchy(Number(parentNodeId));
+  }, [parentNodeId]);
 
   const handleBreadcrumbClick = async (segment: PathSegment, index: number) => {
     try {
@@ -699,7 +704,7 @@ const ContentExplorer = () => {
       handleBreadcrumbClick(parentSegment, parentIndex);
     }
   };
-
+  console.log("Current Path....", currentPath);
   const canNavigateUp = currentPath.length > 1;
   const currentSegment = currentPath[currentPath.length - 1];
   const isRoot = currentPath.length === 1;

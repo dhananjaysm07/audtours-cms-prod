@@ -113,4 +113,10 @@ export default class ContentApi extends ApiClient {
       body: { isActive },
     });
   }
+
+  async getHeirarchy(nodeId: number): Promise<ApiResponse<Node[]>> {
+    return this.request(`/nodes/${nodeId}/node-heirarchy`, {
+      method: "GET",
+    });
+  }
 }

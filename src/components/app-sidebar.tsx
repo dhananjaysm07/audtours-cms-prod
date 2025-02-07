@@ -8,17 +8,17 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@/components/ui/sidebar';
-import sidebarOptions from '@/pages/sidebar-config';
-import { useLocation } from 'react-router';
-import { Button } from '@/components/ui/button';
-import { LogOut } from 'lucide-react';
-import { useAuthStore } from '@/store/useAuthStore';
+} from "@/components/ui/sidebar";
+import sidebarOptions from "@/pages/sidebar-config";
+import { Link, useLocation } from "react-router";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
+import { useAuthStore } from "@/store/useAuthStore";
 
 function AppSidebar() {
   const { pathname } = useLocation();
   const pathnameInitial =
-    pathname.split('/').length > 1 ? pathname.split('/')[1] : '';
+    pathname.split("/").length > 1 ? pathname.split("/")[1] : "";
   const { user, logout } = useAuthStore();
 
   return (
@@ -42,14 +42,14 @@ function AppSidebar() {
                   isActive={item.path === pathnameInitial}
                   asChild
                 >
-                  <a href={`/${item.path}`}>
+                  <Link to={`/${item.path}`}>
                     <item.icon
                       size={20}
                       className="shrink-0"
                       strokeWidth={item.path === pathnameInitial ? 2 : 1.75}
                     />
                     <span className="text-sm">{item.label}</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
@@ -64,12 +64,12 @@ function AppSidebar() {
               {user?.name}
             </span>
             <span className="text-sm leading-none text-muted-foreground truncate">
-              {user?.role === 'admin' ? 'Administrator' : 'Content Manager'}
+              {user?.role === "admin" ? "Administrator" : "Content Manager"}
             </span>
           </div>
           <Button
-            variant={'ghost'}
-            size={'sm'}
+            variant={"ghost"}
+            size={"sm"}
             className="p-1 min-h-0 min-w-0"
             onClick={logout}
           >
