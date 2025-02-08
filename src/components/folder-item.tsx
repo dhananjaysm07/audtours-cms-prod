@@ -102,9 +102,8 @@ const getFolderItemIcon = (item: ContentItem) => {
     return (
       <img
         src={item.path}
-        width={100}
-        height={100}
-        style={iconStyle} // Apply opacity style
+        className="w-[100px] h-[100px] object-cover block"
+        alt="uploaded"
       />
     );
   }
@@ -298,17 +297,22 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
             ""
           )}
 
-          <ContextMenuItem
-            className="flex gap-2 justify-between group"
-            onSelect={() => setIsDeleteDialogOpen(true)}
-          >
-            <span className="group-hover:text-destructive">Delete</span>
-            <Trash2
-              size={16}
-              className="group-hover:text-destructive text-neutral-600"
-              strokeWidth={1.5}
-            />
-          </ContextMenuItem>
+          {item.type == FOLDER_ITEM_TYPE.FOLDER ? (
+            <ContextMenuItem
+              className="flex gap-2 justify-between group"
+              onSelect={() => setIsDeleteDialogOpen(true)}
+            >
+              <span className="group-hover:text-destructive">Delete</span>
+              <Trash2
+                size={16}
+                className="group-hover:text-destructive text-neutral-600"
+                strokeWidth={1.5}
+              />
+            </ContextMenuItem>
+          ) : (
+            ""
+          )}
+
           <ContextMenuItem
             className="flex gap-2 justify-between"
             onSelect={() => setIsPropertiesDialogOpen(true)}

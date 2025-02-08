@@ -198,24 +198,29 @@ const UploadDialog = ({
     error,
     display_toast,
   } = useContentStore();
-  // console.log("Current path:-", currentPath[currentPath.length - 1]);
+
   const { languages, fetchLanguages } = useLanguageStore();
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [conflictMessage, setConflictMessage] = useState("");
   const [isAddLanguageOpen, setIsAddLanguageOpen] = useState(false);
-
+  const [firstRender, setFirstRender] = useState(true);
   useEffect(() => {
     fetchLanguages();
   }, []);
 
   useEffect(() => {
-    if (error_status === 409 && error) {
-      setConflictMessage(error);
-      setShowConflictDialog(true);
-    } else if (error == null && display_toast) {
-      setIsOpen(false);
-      form.reset();
-      toast.success("File uploaded successfully");
+    if (firstRender) {
+      setFirstRender(false);
+    }
+    if (!firstRender) {
+      if (error_status === 409 && error) {
+        setConflictMessage(error);
+        setShowConflictDialog(true);
+      } else if (error == null && display_toast && !isProcessing) {
+        setIsOpen(false);
+        form.reset();
+        toast.success("File uploaded successfully");
+      }
     }
   }, [error_status, error, display_toast]);
 
@@ -248,7 +253,6 @@ const UploadDialog = ({
         force_position: forcePosition,
         languageId: data.languageId,
       };
-
       await uploadFile(uploadData);
     } catch (error) {
       if ((error as { status: number }).status === 409) {
@@ -704,7 +708,6 @@ const ContentExplorer = () => {
       handleBreadcrumbClick(parentSegment, parentIndex);
     }
   };
-  console.log("Current Path....", currentPath);
   const canNavigateUp = currentPath.length > 1;
   const currentSegment = currentPath[currentPath.length - 1];
   const isRoot = currentPath.length === 1;
@@ -765,6 +768,7 @@ const ContentExplorer = () => {
               variant="secondary"
               className="min-w-0"
               onClick={() => setIsOpenUploadDialog(true)}
+              disabled={!isFileUploadAvailable({ type: currentSegment.type })}
             >
               <FileUp size={16} />
             </Button>

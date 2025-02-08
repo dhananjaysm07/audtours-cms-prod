@@ -61,7 +61,7 @@ function StorePage() {
   }, [error_status, isLoading]);
 
   return (
-    <div className="flex flex-col p-4 rounded-lg gap-4 flex-1">
+    <div className="flex flex-col p-4 pt-0 rounded-lg gap-4 flex-1">
       <StoreGrid
         stores={stores}
         onEdit={handleEdit}

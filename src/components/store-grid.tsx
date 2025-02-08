@@ -2,6 +2,7 @@ import { Store } from "@/types";
 import { Plus } from "lucide-react";
 import { StoreCard } from "./store-card";
 import LoadingSpinner from "./spinner";
+import { Button } from "./ui/button";
 
 interface StoreGridProps {
   stores: Store[];
@@ -19,24 +20,19 @@ export function StoreGrid({
   isLoading,
 }: StoreGridProps) {
   return (
-    <div className="p-6 max-w-[1600px] mx-auto">
+    <div className="p-6 pt-2 max-w-[1600px] mx-auto">
       <div className="flex flex-col gap-5 mb-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-1.5">Stores</h1>
+            {/* <h1 className="text-3xl font-bold text-gray-900 mb-1.5">Stores</h1> */}
             <p className="text-gray-600 text-sm">
               Manage your storefronts and their settings
             </p>
           </div>
-          <button
-            onClick={onCreateNew}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="font-medium text-sm">Create Store</span>
-          </button>
+          <Button onClick={onCreateNew} size="sm" className="gap-1">
+            + Create Store
+          </Button>
         </div>
-
         {/* <div className="flex gap-3 flex-wrap">
           <div className="flex-1 min-w-[240px]">
             <div className="relative">
@@ -54,7 +50,7 @@ export function StoreGrid({
           </button>
         </div> */}
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-4">
         {isLoading && stores.length == 0 ? (
           <div className="grid h-full w-full place-items-center pb-16">
             <LoadingSpinner size="medium" />
