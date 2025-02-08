@@ -1,5 +1,5 @@
 import { ApiClient } from './client';
-import type { ApiResponse, AuthResponse } from '@/types';
+import type { ApiResponse, AuthResponse, User } from '@/types';
 
 export default class AuthApi extends ApiClient {
   async login(email: string, password: string): Promise<AuthResponse> {
@@ -7,6 +7,18 @@ export default class AuthApi extends ApiClient {
       method: 'POST',
       body: { email, password },
       requireAuth: false,
+    });
+  }
+
+  async getMe(): Promise<ApiResponse<User>> {
+    return this.request('/users/profile', {
+      method: 'GET',
+      // body: {
+      //   id,
+      //   name,
+      //   email,
+      //   role,
+      // },
     });
   }
 

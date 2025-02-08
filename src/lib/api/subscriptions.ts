@@ -15,6 +15,20 @@ export default class SubscriptionApi extends ApiClient {
     });
   }
 
+  async getServerTime(): Promise<ApiResponse<{ serverTime: string }>> {
+    return this.request('/subscriptions/server-time');
+  }
+
+  async updateCode(
+    codeId: number,
+    data: { expiryHours: number; expiryDays: number }
+  ): Promise<ApiResponse<CodeResponse>> {
+    return this.request(`/subscriptions/codes/${codeId}`, {
+      method: 'PATCH',
+      body: data,
+    });
+  }
+
   async getCodes(page = 1, limit = 10): Promise<ApiResponse<GetCodesResponse>> {
     return this.request(`/subscriptions/codes?page=${page}&limit=${limit}`);
   }
@@ -26,8 +40,8 @@ export default class SubscriptionApi extends ApiClient {
   }
 
   async deactivateCode(codeId: number): Promise<ApiResponse<void>> {
-    return this.request(`/subscriptions/codes/${codeId}/expire`, {
-      method: 'POST',
+    return this.request(`/subscriptions/codes/${codeId}`, {
+      method: 'DELETE',
     });
   }
 

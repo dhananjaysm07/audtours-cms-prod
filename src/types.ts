@@ -225,10 +225,19 @@ export type FetchChildrenResponse = {
 
 export type CreateCodeData = {
   nodeIds: number[];
-  validFrom: string; // ISO date string
-  validTo: string; // ISO date string
+  expiryDays: number;
+  expiryHours: number;
   maxUsers: number;
 };
+
+export interface User {
+  userId: number;
+  email: string;
+  name: string;
+  isEmailVerified: boolean;
+  otp: string;
+  resetPasswordOTP: string;
+}
 
 export interface CodeNode {
   nodeId: number;

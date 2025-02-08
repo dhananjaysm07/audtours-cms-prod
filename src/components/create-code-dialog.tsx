@@ -32,14 +32,12 @@ import {
   CommandItem,
   CommandList,
   CommandEmpty,
-  CommandGroup,
 } from '@/components/ui/command';
 import { createCodeSchema } from '@/schemas/create-code-schema';
-import { DateTimePicker } from './date-time-picker';
-import { contentApi } from '@/lib/api';
+import { contentApi, subscriptionApi } from '@/lib/api';
 import type { Node } from '@/types';
 import { debounce } from 'lodash';
-import { ScrollArea, ScrollBar } from './ui/scroll-area';
+import { ScrollArea } from './ui/scroll-area';
 
 interface CreateCodeDialogProps {
   dialogOpen: boolean;
@@ -49,6 +47,7 @@ interface CreateCodeDialogProps {
 }
 
 const SEARCH_DEBOUNCE_MS = 300;
+const SERVER_TIME_REFRESH_INTERVAL = 5000;
 
 const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
   dialogOpen,
@@ -64,8 +63,8 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
     new Map()
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [startDateTouched, setStartDateTouched] = useState(false);
-  const [endDateTouched, setEndDateTouched] = useState(false);
+  const [serverTime, setServerTime] = useState<Date | null>(null);
+  const [isLoadingServerTime, setIsLoadingServerTime] = useState(true);
 
   // Create a memoized debounced search function
   const debouncedSearch = useCallback(
@@ -90,6 +89,30 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
     [setSearchResults, setIsSearching]
   );
 
+  // Fetch server time
+  const fetchServerTime = async () => {
+    try {
+      const response = await subscriptionApi.getServerTime();
+      setServerTime(new Date(response.data.serverTime));
+    } catch (error) {
+      console.error('Error fetching server time:', error);
+    } finally {
+      setIsLoadingServerTime(false);
+    }
+  };
+
+  // Initialize server time polling
+  useEffect(() => {
+    if (dialogOpen) {
+      fetchServerTime();
+      const interval = setInterval(
+        fetchServerTime,
+        SERVER_TIME_REFRESH_INTERVAL
+      );
+      return () => clearInterval(interval);
+    }
+  }, [dialogOpen]);
+
   // Cleanup debounced function
   useEffect(() => {
     return () => {
@@ -103,9 +126,6 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
       setSearchTerm('');
       setShowNodeSearch(false);
       setSearchResults([]);
-      setStartDateTouched(false);
-      setEndDateTouched(false);
-      form.reset();
     }
   }, [dialogOpen, form]);
 
@@ -124,55 +144,6 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
   );
 
   const selectedNodeIds = form.watch('nodeIds') || [];
-  const startTime = form.watch('validFrom');
-  const endTime = form.watch('validTo');
-
-  const validateDates = useCallback(() => {
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    const currentTime = new Date();
-    const minStartTime = new Date(currentTime.getTime() + 5 * 60000);
-    let hasErrors = false;
-
-    if (startDateTouched && start < minStartTime) {
-      form.setError('validFrom', {
-        type: 'manual',
-        message: 'Start time must be at least 5 minutes from now',
-      });
-      hasErrors = true;
-    } else if (startDateTouched) {
-      form.clearErrors('validFrom');
-    }
-
-    if (endDateTouched && end <= start) {
-      form.setError('validTo', {
-        type: 'manual',
-        message: 'Expiry time must be after start time',
-      });
-      hasErrors = true;
-    } else if (endDateTouched) {
-      form.clearErrors('validTo');
-    }
-
-    return !hasErrors;
-  }, [startTime, endTime, form, startDateTouched, endDateTouched]);
-
-  // Only validate when dates are touched
-  useEffect(() => {
-    if (startDateTouched || endDateTouched) {
-      validateDates();
-    }
-  }, [startTime, endTime, validateDates, startDateTouched, endDateTouched]);
-
-  const handleStartDateChange = (value: string) => {
-    setStartDateTouched(true);
-    form.setValue('validFrom', value);
-  };
-
-  const handleEndDateChange = (value: string) => {
-    setEndDateTouched(true);
-    form.setValue('validTo', value);
-  };
 
   const filteredNodes = searchResults.filter(
     (node) => !selectedNodeIds.includes(node.id)
@@ -204,14 +175,6 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
   );
 
   const handleSubmit = async (values: z.infer<typeof createCodeSchema>) => {
-    // Force validation of both dates before submission
-    setStartDateTouched(true);
-    setEndDateTouched(true);
-
-    if (!validateDates()) {
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       await onCreateCode(values);
@@ -237,6 +200,20 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Create New Code</DialogTitle>
         </DialogHeader>
+
+        {/* <div className="mb-"> */}
+        {isLoadingServerTime ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <LoadingSpinner size="small" />
+            <span>Fetching server time...</span>
+          </div>
+        ) : serverTime ? (
+          <div className="text-sm text-muted-foreground">
+            Server Time: {serverTime.toLocaleString()}
+          </div>
+        ) : null}
+        {/* </div> */}
+
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
@@ -326,62 +303,81 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
               )}
             />
 
-            <div className="space-y-2">
-              <FormField
-                control={form.control}
-                name="validFrom"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Starts</FormLabel>
-                    <FormControl>
-                      <DateTimePicker
-                        onChange={handleStartDateChange}
-                        value={field.value}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div className="flex gap-20">
+              <div className="flex gap-4">
+                <FormField
+                  control={form.control}
+                  name="expiryDays"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Days</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(parseInt(e.target.value))
+                          }
+                          placeholder="Days"
+                          className="w-20 h-7 p-2 text-xs"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="validTo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ends</FormLabel>
-                    <FormControl>
-                      <DateTimePicker
-                        onChange={handleEndDateChange}
-                        value={field.value}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="expiryHours"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hours</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={23}
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(parseInt(e.target.value))
+                          }
+                          placeholder="Hours"
+                          className="w-20 h-7 p-2 text-xs"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div>
+                <FormField
+                  control={form.control}
+                  name="maxUsers"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Maximum Users</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(parseInt(e.target.value))
+                          }
+                          placeholder="Enter maximum users"
+                          className="w-20 h-7 p-2 text-xs"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
-
-            <FormField
-              control={form.control}
-              name="maxUsers"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Maximum Users</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={1}
-                      {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value))}
-                      placeholder="Enter maximum users"
-                      className="w-20 h-7 p-2 text-xs"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <div className="pt-2">
               <Button type="submit" className="w-full" disabled={isSubmitting}>

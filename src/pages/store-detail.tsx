@@ -1,10 +1,10 @@
-import React, { useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { Folder } from "lucide-react"; // Assuming you're using Lucide React icons
-import { toast } from "sonner";
-import { useStorefrontStore } from "@/store/useStoreFrontStore";
-import { Node } from "@/types";
-import { cn } from "@/lib/utils";
+import React, { useEffect } from 'react';
+import { useParams } from 'react-router';
+import { Folder } from 'lucide-react'; // Assuming you're using Lucide React icons
+import { toast } from 'sonner';
+import { useStorefrontStore } from '@/store/useStoreFrontStore';
+import { Node } from '@/types';
+import { cn } from '@/lib/utils';
 
 const StorePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,7 +30,7 @@ const StorePage: React.FC = () => {
   }
 
   const handleNodeDoubleClick = (nodeId: number) => {
-    window.open(`/explorer?parentNodeId=${nodeId}`, "_blank");
+    window.open(`/explorer?parentNodeId=${nodeId}`, '_blank');
   };
 
   const getFolderItemIcon = (node: Node) => {
@@ -57,7 +57,7 @@ const StorePage: React.FC = () => {
           <div
             onDoubleClick={() => handleNodeDoubleClick(nod.id)}
             className={cn(
-              "h-28 aspect-square flex flex-col items-center focus-visible:outline hover:bg-blue-50 justify-center shrink-0 rounded-lg"
+              'h-28 aspect-square flex flex-col items-center focus-visible:outline hover:bg-blue-50 justify-center shrink-0 rounded-lg'
             )}
             tabIndex={0}
           >
