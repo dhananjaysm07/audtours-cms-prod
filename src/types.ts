@@ -1,20 +1,20 @@
 // Constants
 export const FOLDER_ITEM_TYPE = {
-  FOLDER: "folder",
-  FILE: "file",
-  REPOSITORY: "repository",
+  FOLDER: 'folder',
+  FILE: 'file',
+  REPOSITORY: 'repository',
 } as const;
 
 export const REPOSITORY_KINDS = {
-  AUDIO: "audio",
-  GALLERY: "gallery",
+  AUDIO: 'audio',
+  GALLERY: 'gallery',
 } as const;
 
 export const NODE_TYPES = {
-  MAP: "map",
-  LOCATION: "location",
-  SPOT: "spot",
-  STOP: "stop",
+  MAP: 'map',
+  LOCATION: 'location',
+  SPOT: 'spot',
+  STOP: 'stop',
 } as const;
 
 // Type Utilities
@@ -28,7 +28,7 @@ export type NodeType = (typeof NODE_TYPES)[keyof typeof NODE_TYPES];
 export type UploadDialogPropsType = {
   isOpen: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  allowedTypes?: Array<"image" | "audio">;
+  allowedTypes?: Array<'image' | 'audio'>;
 };
 
 // Base interfaces
@@ -133,8 +133,8 @@ export interface ContentState {
   items: ContentItem[];
   selectedItems: string[];
   sortedItems: ContentItem[];
-  sortBy: "name" | "date" | "size";
-  sortOrder: "asc" | "desc";
+  sortBy: 'name' | 'date' | 'size';
+  sortOrder: 'asc' | 'desc';
   isProcessing: boolean;
   error: string | null;
   error_status: number | null;
@@ -164,8 +164,8 @@ export interface ContentActions {
   uploadFile: (uploadFiledata: UploadFiledata) => Promise<void>;
   deleteNode: (id: string) => Promise<void>;
   renameNode: (id: string, newName: string) => Promise<void>;
-  setSortBy: (sortBy: ContentState["sortBy"]) => void;
-  setSortOrder: (sortOrder: ContentState["sortOrder"]) => void;
+  setSortBy: (sortBy: ContentState['sortBy']) => void;
+  setSortOrder: (sortOrder: ContentState['sortOrder']) => void;
   toggleItemSelection: (id: string) => void;
   setCurrentAudio: (id: string) => void;
   setIsAudioPlaying: (isPlaying: boolean) => void;
@@ -176,7 +176,7 @@ export interface ContentActions {
     data: EditFileData,
     forcePosition: boolean
   ) => Promise<void>;
-  getHeirarchy: (nodeId: number) => Promise<void>;
+  getHierarchy: (nodeId: number) => Promise<void>;
   editFolder: (
     nodeId: string,
     data: {
@@ -190,7 +190,7 @@ export interface ContentActions {
 
 // API interfaces
 export interface ApiResponse<T> {
-  status: "success" | "error";
+  status: 'success' | 'error';
   data: T;
   meta?: {
     pagination: PaginationMeta;
@@ -202,7 +202,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  role: "admin" | "user";
+  role: 'admin' | 'user';
 }
 
 export interface AuthResponse
@@ -210,7 +210,7 @@ export interface AuthResponse
     token: string;
     user: User;
   }> {
-  status: "success" | "error";
+  status: 'success' | 'error';
   data: {
     token: string;
     user: User;
@@ -225,10 +225,19 @@ export type FetchChildrenResponse = {
 
 export type CreateCodeData = {
   nodeIds: number[];
-  validFrom: string; // ISO date string
-  validTo: string; // ISO date string
+  expiryDays: number;
+  expiryHours: number;
   maxUsers: number;
 };
+
+export interface User {
+  userId: number;
+  email: string;
+  name: string;
+  isEmailVerified: boolean;
+  otp: string;
+  resetPasswordOTP: string;
+}
 
 export interface CodeNode {
   nodeId: number;

@@ -4,7 +4,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import AppSidebar from '@/components/app-sidebar';
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import LoadingSpinner from '@/components/spinner';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import sidebarOptions from './pages/sidebar-config';
@@ -19,9 +19,9 @@ export default function DashboardLayout() {
 
   const { isAuthenticated } = useAuthStore();
 
-  if (!isAuthenticated) {
-    navigate('/sign-in');
-  }
+  useEffect(() => {
+    if (!isAuthenticated) navigate('/sign-in');
+  }, [isAuthenticated, navigate]);
 
   return (
     <SidebarProvider>

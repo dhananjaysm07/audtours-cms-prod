@@ -1,5 +1,5 @@
 // src/lib/api/content.ts
-import { ApiClient } from "./client";
+import { ApiClient } from './client';
 import type {
   ApiResponse,
   Node,
@@ -7,11 +7,11 @@ import type {
   FetchChildrenResponse,
   NodeType,
   UploadFiledata,
-} from "@/types";
+} from '@/types';
 
 export default class ContentApi extends ApiClient {
   async fetchRootNodes(): Promise<ApiResponse<Node[]>> {
-    return this.request("/nodes/parent-nodes");
+    return this.request('/nodes/parent-nodes');
   }
 
   async fetchChildren(
@@ -37,21 +37,21 @@ export default class ContentApi extends ApiClient {
       parentId !== null
         ? { name, type, parentId, code, artistId }
         : { name, type, code, artistId };
-    return this.request("/nodes", {
-      method: "POST",
+    return this.request('/nodes', {
+      method: 'POST',
       body,
     });
   }
 
   async deleteNode(id: string): Promise<void> {
     await this.request(`/nodes/${id}`, {
-      method: "DELETE",
+      method: 'DELETE',
     });
   }
 
   async renameNode(id: string, newName: string): Promise<ApiResponse<Node>> {
     return this.request(`/nodes/${id}/rename`, {
-      method: "PATCH",
+      method: 'PATCH',
       body: { name: newName },
     });
   }
@@ -64,12 +64,12 @@ export default class ContentApi extends ApiClient {
     uploadFiledata: UploadFiledata
   ): Promise<ApiResponse<RepositoryFile>> {
     const formData = new FormData();
-    formData.append("file", uploadFiledata.file);
-    formData.append("name", uploadFiledata.name);
-    formData.append("position", String(uploadFiledata.position));
-    formData.append("force_position", String(uploadFiledata.force_position));
+    formData.append('file', uploadFiledata.file);
+    formData.append('name', uploadFiledata.name);
+    formData.append('position', String(uploadFiledata.position));
+    formData.append('force_position', String(uploadFiledata.force_position));
     return this.request(`/repo/${uploadFiledata.repoId}/upload`, {
-      method: "POST",
+      method: 'POST',
       body: formData,
     });
   }
@@ -85,7 +85,7 @@ export default class ContentApi extends ApiClient {
     }
   ): Promise<ApiResponse<RepositoryFile>> {
     return this.request(`/repo/${repoId}/files/basic-details/${fileId}`, {
-      method: "PATCH",
+      method: 'PATCH',
       body: data,
     });
   }
@@ -99,7 +99,7 @@ export default class ContentApi extends ApiClient {
     }
   ): Promise<ApiResponse<Node>> {
     return this.request(`/nodes/${nodeId}/edit`, {
-      method: "PATCH",
+      method: 'PATCH',
       body: data,
     });
   }
@@ -109,14 +109,14 @@ export default class ContentApi extends ApiClient {
     isActive: boolean
   ): Promise<ApiResponse<void>> {
     return this.request(`/nodes/${nodeId}/activation`, {
-      method: "PATCH",
+      method: 'PATCH',
       body: { isActive },
     });
   }
 
-  async getHeirarchy(nodeId: number): Promise<ApiResponse<Node[]>> {
-    return this.request(`/nodes/${nodeId}/node-heirarchy`, {
-      method: "GET",
+  async getHierarchy(nodeId: number): Promise<ApiResponse<Node[]>> {
+    return this.request(`/nodes/${nodeId}/node-hierarchy`, {
+      method: 'GET',
     });
   }
 }
