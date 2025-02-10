@@ -32,7 +32,7 @@ export default function DashboardLayout() {
           <SidebarTrigger className="text-neutral-500" />
           <h1 className="text-2xl font-bold text-neutral-700">
             {
-              sidebarOptions.filter((item) => item.path == pathnameInitial)[0]
+              sidebarOptions.filter(item => item.path == pathnameInitial)[0]
                 .label
             }
           </h1>

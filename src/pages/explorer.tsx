@@ -80,7 +80,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLanguageStore } from '@/store/useLanguageStore';
-import LanguageManagementDialog from '@/components/LanguageManagementDialog';
+import LanguageManagementDialog from '@/components/language-management-dialog';
 import ArtistManagementDialog from '@/components/artist-management-dialog';
 import { useArtistStore } from '@/store/useArtistStore';
 import { useSearchParams } from 'react-router';
@@ -104,7 +104,7 @@ type UploadDialogFormState = z.infer<typeof UploadDialogSchema>;
 
 const getBreadcrumb = (
   currentPath: PathSegment[],
-  onBreadcrumbClick: (segment: PathSegment, index: number) => void
+  onBreadcrumbClick: (segment: PathSegment, index: number) => void,
 ) => {
   return (
     <Breadcrumb>
@@ -170,10 +170,6 @@ const getNodeBadge = (nodeType: NodeType) => {
   }
 };
 
-const isFileUploadAvailable = ({ type }: { type: FolderItemType }) => {
-  return type === 'repository';
-};
-
 const UploadDialog = ({
   allowedTypes = ['image', 'audio'],
   isOpen,
@@ -198,7 +194,6 @@ const UploadDialog = ({
     error,
     display_toast,
   } = useContentStore();
-  // console.log("Current path:-", currentPath[currentPath.length - 1]);
   const { languages, fetchLanguages } = useLanguageStore();
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [conflictMessage, setConflictMessage] = useState('');
@@ -206,7 +201,7 @@ const UploadDialog = ({
 
   useEffect(() => {
     fetchLanguages();
-  }, []);
+  }, [fetchLanguages]);
 
   useEffect(() => {
     if (error_status === 409 && error) {
@@ -217,13 +212,13 @@ const UploadDialog = ({
       form.reset();
       toast.success('File uploaded successfully');
     }
-  }, [error_status, error, display_toast]);
+  }, [error_status, error, display_toast, setIsOpen, form]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (
       selectedFile &&
-      allowedTypes.some((type) => selectedFile.type.startsWith(`${type}/`))
+      allowedTypes.some(type => selectedFile.type.startsWith(`${type}/`))
     ) {
       form.setValue('file', selectedFile);
     } else {
@@ -233,7 +228,7 @@ const UploadDialog = ({
 
   const handleUpload = async (
     data: UploadDialogFormState,
-    forcePosition = false
+    forcePosition = false,
   ) => {
     if (!data.file) return;
     try {
@@ -271,7 +266,7 @@ const UploadDialog = ({
           </DialogHeader>
           <Form {...form}>
             <form
-              onSubmit={form.handleSubmit((data) => handleUpload(data))}
+              onSubmit={form.handleSubmit(data => handleUpload(data))}
               className="space-y-4"
             >
               <FormField
@@ -284,9 +279,7 @@ const UploadDialog = ({
                       <Input
                         type="file"
                         onChange={handleFileChange}
-                        accept={allowedTypes
-                          .map((type) => `${type}/*`)
-                          .join(',')}
+                        accept={allowedTypes.map(type => `${type}/*`).join(',')}
                       />
                     </FormControl>
                     <FormMessage />
@@ -331,7 +324,7 @@ const UploadDialog = ({
                         <div className="flex justify-between items-center">
                           <Select
                             value={field.value?.toString()}
-                            onValueChange={(value) =>
+                            onValueChange={value =>
                               field.onChange(value ? Number(value) : null)
                             }
                           >
@@ -340,8 +333,8 @@ const UploadDialog = ({
                             </SelectTrigger>
                             <SelectContent>
                               {languages
-                                .filter((lang) => lang.isActive)
-                                .map((lang) => (
+                                .filter(lang => lang.isActive)
+                                .map(lang => (
                                   <SelectItem
                                     key={lang.id}
                                     value={lang.id.toString()}
@@ -441,7 +434,7 @@ const CreateFolderDialog = () => {
           folderType as NodeType,
           parentId,
           folderType === NODE_TYPES.STOP ? code : null,
-          folderType === NODE_TYPES.STOP ? artistId : null
+          folderType === NODE_TYPES.STOP ? artistId : null,
         );
         setIsOpen(false);
         setFolderName('');
@@ -505,14 +498,14 @@ const CreateFolderDialog = () => {
           <Input
             placeholder="Folder Name"
             value={folderName}
-            onChange={(e) => setFolderName(e.target.value)}
+            onChange={e => setFolderName(e.target.value)}
           />
           <Select onValueChange={setFolderType}>
             <SelectTrigger>
               <SelectValue placeholder="Select folder type" />
             </SelectTrigger>
             <SelectContent>
-              {getAvailableTypes().map((type) => (
+              {getAvailableTypes().map(type => (
                 <SelectItem key={type} value={type}>
                   {type.charAt(0).toUpperCase() + type.slice(1)}
                 </SelectItem>
@@ -526,17 +519,17 @@ const CreateFolderDialog = () => {
               <Input
                 placeholder="Code (optional)"
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={e => setCode(e.target.value)}
               />
               <div className="flex gap-2">
-                <Select onValueChange={(value) => setArtistId(Number(value))}>
+                <Select onValueChange={value => setArtistId(Number(value))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select artist (optional)" />
                   </SelectTrigger>
                   <SelectContent>
                     {artists
-                      .filter((artist) => artist.isActive)
-                      .map((artist) => (
+                      .filter(artist => artist.isActive)
+                      .map(artist => (
                         <SelectItem key={artist.id} value={String(artist.id)}>
                           {artist.name}
                         </SelectItem>
@@ -606,8 +599,8 @@ const FolderView = () => {
     event.stopPropagation();
 
     const files = Array.from(event.dataTransfer.files);
-    const acceptedFiles = files.filter((file) =>
-      ['image/', 'audio/'].some((type) => file.type.startsWith(type))
+    const acceptedFiles = files.filter(file =>
+      ['image/', 'audio/'].some(type => file.type.startsWith(type)),
     );
 
     if (acceptedFiles.length) {
@@ -636,11 +629,11 @@ const FolderView = () => {
       onDragEnd={handleDrop}
       onDragOver={handleDragOver}
       className="cursor-auto"
-      onKeyDownCapture={(e) =>
+      onKeyDownCapture={e =>
         e.key === 'Escape' &&
-        selectedItems.forEach((item) => toggleItemSelection(item))
+        selectedItems.forEach(item => toggleItemSelection(item))
       }
-      onClick={() => selectedItems.forEach((item) => toggleItemSelection(item))}
+      onClick={() => selectedItems.forEach(item => toggleItemSelection(item))}
     >
       <div className="flex-1 flex flex-wrap gap-6 p-2 overflow-y-auto scroll-smooth h-full justify-start items-start rounded-lg">
         {isLoading ? (
@@ -685,7 +678,7 @@ const ContentExplorer = () => {
     };
     if (!parentNodeId) initializeStore();
     else getHierarchy(Number(parentNodeId));
-  }, [parentNodeId]);
+  }, [getHierarchy, navigateTo, parentNodeId, setIsLoading]);
 
   const handleBreadcrumbClick = async (segment: PathSegment, index: number) => {
     try {
@@ -704,14 +697,13 @@ const ContentExplorer = () => {
       handleBreadcrumbClick(parentSegment, parentIndex);
     }
   };
-  console.log('Current Path....', currentPath);
   const canNavigateUp = currentPath.length > 1;
   const currentSegment = currentPath[currentPath.length - 1];
   const isRoot = currentPath.length === 1;
 
   useEffect(() => {
     if (error && display_toast) toast.error(error);
-  }, [error]);
+  }, [display_toast, error]);
 
   return (
     <div className="flex flex-col bg-white p-4 rounded-lg gap-4 flex-1">

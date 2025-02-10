@@ -53,11 +53,11 @@ const StorePage: React.FC = () => {
       <h1 className="text-2xl font-bold mb-4">{currentStore.heading}</h1>
       <p className="text-gray-700 mb-6">{currentStore.description}</p>
       <div className="flex-1 flex flex-wrap gap-6 p-2 overflow-y-auto scroll-smooth h-full justify-start items-start rounded-lg">
-        {currentStore.nodes.map((nod) => (
+        {currentStore.nodes.map(nod => (
           <div
             onDoubleClick={() => handleNodeDoubleClick(nod.id)}
             className={cn(
-              'h-28 aspect-square flex flex-col items-center focus-visible:outline hover:bg-blue-50 justify-center shrink-0 rounded-lg'
+              'h-28 aspect-square flex flex-col items-center focus-visible:outline hover:bg-blue-50 justify-center shrink-0 rounded-lg',
             )}
             tabIndex={0}
           >

@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Input } from "./ui/input";
-import { Button } from "./ui/button";
-import { Switch } from "./ui/switch";
-import { useLanguageStore } from "@/store/useLanguageStore";
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
+import { Switch } from './ui/switch';
+import { useLanguageStore } from '@/store/useLanguageStore';
 
 interface LanguageManagementDialogProps {
   isOpen: boolean;
@@ -16,7 +16,7 @@ const LanguageManagementDialog = ({
 }: LanguageManagementDialogProps) => {
   const { languages, createLanguage, toggleLanguageStatus } =
     useLanguageStore();
-  const [newLanguageName, setNewLanguageName] = useState("");
+  const [newLanguageName, setNewLanguageName] = useState('');
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -28,20 +28,20 @@ const LanguageManagementDialog = ({
           <div className="flex gap-2">
             <Input
               value={newLanguageName}
-              onChange={(e) => setNewLanguageName(e.target.value)}
+              onChange={e => setNewLanguageName(e.target.value)}
               placeholder="New language name"
             />
             <Button
               onClick={() => {
                 createLanguage(newLanguageName);
-                setNewLanguageName("");
+                setNewLanguageName('');
               }}
             >
               Add
             </Button>
           </div>
           <div className="space-y-2">
-            {languages.map((lang) => (
+            {languages.map(lang => (
               <div key={lang.id} className="flex justify-between items-center">
                 <span>{lang.name}</span>
                 <Switch
