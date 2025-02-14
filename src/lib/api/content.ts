@@ -7,6 +7,8 @@ import type {
   FetchChildrenResponse,
   NodeType,
   UploadFiledata,
+  RepositoryKind,
+  Repository,
 } from '@/types';
 
 export default class ContentApi extends ApiClient {
@@ -15,13 +17,13 @@ export default class ContentApi extends ApiClient {
   }
 
   async fetchChildren(
-    nodeId: string
+    nodeId: string,
   ): Promise<ApiResponse<FetchChildrenResponse>> {
     return this.request(`/nodes/${nodeId}/children`);
   }
 
   async fetchRepositoryFiles(
-    repoId: string
+    repoId: string,
   ): Promise<ApiResponse<RepositoryFile[]>> {
     return this.request(`/repo/${repoId}/files`);
   }
@@ -31,7 +33,7 @@ export default class ContentApi extends ApiClient {
     type: NodeType,
     parentId: number | null,
     code: string | null,
-    artistId: number | null
+    artistId: number | null,
   ): Promise<ApiResponse<Node>> {
     const body =
       parentId !== null
@@ -61,7 +63,7 @@ export default class ContentApi extends ApiClient {
   }
 
   async uploadFile(
-    uploadFiledata: UploadFiledata
+    uploadFiledata: UploadFiledata,
   ): Promise<ApiResponse<RepositoryFile>> {
     const formData = new FormData();
     formData.append('file', uploadFiledata.file);
@@ -80,9 +82,8 @@ export default class ContentApi extends ApiClient {
     data: {
       name: string;
       position: number | undefined;
-      languageId?: number | null;
       force_position: string;
-    }
+    },
   ): Promise<ApiResponse<RepositoryFile>> {
     return this.request(`/repo/${repoId}/files/basic-details/${fileId}`, {
       method: 'PATCH',
@@ -96,7 +97,7 @@ export default class ContentApi extends ApiClient {
       name?: string;
       artistId?: number | null;
       code?: string | null;
-    }
+    },
   ): Promise<ApiResponse<Node>> {
     return this.request(`/nodes/${nodeId}/edit`, {
       method: 'PATCH',
@@ -106,7 +107,7 @@ export default class ContentApi extends ApiClient {
 
   async setNodeActivation(
     nodeId: string,
-    isActive: boolean
+    isActive: boolean,
   ): Promise<ApiResponse<void>> {
     return this.request(`/nodes/${nodeId}/activation`, {
       method: 'PATCH',
@@ -117,6 +118,23 @@ export default class ContentApi extends ApiClient {
   async getHierarchy(nodeId: number): Promise<ApiResponse<Node[]>> {
     return this.request(`/nodes/${nodeId}/node-hierarchy`, {
       method: 'GET',
+    });
+  }
+
+  async createRepository(
+    nodeId: number,
+    type: RepositoryKind,
+    languageId?: number,
+  ): Promise<ApiResponse<Repository>> {
+    const body = {
+      nodeId,
+      type,
+      languageId: type === 'audio' ? languageId : null,
+    };
+
+    return this.request('/repo', {
+      method: 'POST',
+      body,
     });
   }
 }

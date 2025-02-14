@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useEffect } from 'react';
+import { UserRole } from '@/types';
 
 function AppSidebar() {
   const { pathname } = useLocation();
@@ -22,6 +23,11 @@ function AppSidebar() {
   const pathnameInitial =
     pathname.split('/').length > 1 ? pathname.split('/')[1] : '';
   const { user, logout, isAuthenticated } = useAuthStore();
+
+  // Filter sidebar options based on the user's role
+  const filteredSidebarOptions = sidebarOptions.filter(option =>
+    option.roles.includes(user?.role as UserRole),
+  );
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -38,15 +44,13 @@ function AppSidebar() {
               <h1 className="font-bold text-2xl leading-none text-neutral-600">
                 audtours
               </h1>
-              {/* <span className="text-sm">hi prakash!</span>
-          <span>Administrator</span> */}
             </div>
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
               <SidebarGroupLabel>Management</SidebarGroupLabel>
               <SidebarMenu>
-                {sidebarOptions.map((item, _index) => (
+                {filteredSidebarOptions.map((item, _index) => (
                   <SidebarMenuItem key={_index}>
                     <SidebarMenuButton
                       isActive={item.path === pathnameInitial}

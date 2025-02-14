@@ -120,7 +120,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
 useAuthStore.getState().fetchUser();
 // Custom hooks for common auth operations
 export const useIsAuthenticated = () =>
-  useAuthStore((state) => state.isAuthenticated);
-export const useCurrentUser = () => useAuthStore((state) => state.user);
+  useAuthStore(state => state.isAuthenticated);
+export const useCurrentUser = () => useAuthStore(state => state.user);
 export const useIsAdmin = () =>
-  useAuthStore((state) => state.user?.role === 'admin');
+  useAuthStore(state => state.user?.role === 'admin');

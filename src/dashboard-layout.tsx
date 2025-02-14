@@ -18,7 +18,6 @@ export default function DashboardLayout() {
     pathname.split('/').length > 1 ? pathname.split('/')[1] : '';
 
   const { isAuthenticated } = useAuthStore();
-
   useEffect(() => {
     if (!isAuthenticated) navigate('/sign-in');
   }, [isAuthenticated, navigate]);
@@ -32,7 +31,7 @@ export default function DashboardLayout() {
           <SidebarTrigger className="text-neutral-500" />
           <h1 className="text-2xl font-bold text-neutral-700">
             {
-              sidebarOptions.filter((item) => item.path == pathnameInitial)[0]
+              sidebarOptions.filter(item => item.path == pathnameInitial)[0]
                 .label
             }
           </h1>

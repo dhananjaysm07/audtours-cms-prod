@@ -8,6 +8,7 @@ export const FOLDER_ITEM_TYPE = {
 export const REPOSITORY_KINDS = {
   AUDIO: 'audio',
   GALLERY: 'gallery',
+  MAP: 'map',
 } as const;
 
 export const NODE_TYPES = {
@@ -17,18 +18,27 @@ export const NODE_TYPES = {
   STOP: 'stop',
 } as const;
 
+export const USER_ROLE = {
+  USER: 'user',
+  ADMIN: 'admin',
+  CONTENT_MANAGER: 'content_manager',
+  OPERATION_MANAGER: 'operation_manager',
+  STORE_MANAGER: 'store_manager',
+} as const;
+
 // Type Utilities
 export type FolderItemType =
   (typeof FOLDER_ITEM_TYPE)[keyof typeof FOLDER_ITEM_TYPE];
 export type RepositoryKind =
   (typeof REPOSITORY_KINDS)[keyof typeof REPOSITORY_KINDS];
 export type NodeType = (typeof NODE_TYPES)[keyof typeof NODE_TYPES];
+export type UserRole = (typeof USER_ROLE)[keyof typeof USER_ROLE];
 
 // Upload File Dialog Box
 export type UploadDialogPropsType = {
   isOpen: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  allowedTypes?: Array<'image' | 'audio'>;
+  allowedTypes?: Array<'image' | 'audio' | 'application/pdf'>;
 };
 
 // Base interfaces
@@ -43,6 +53,8 @@ interface BaseItem {
 export interface Repository extends BaseItem {
   nodeId: number;
   type: RepositoryKind;
+  language?: string | null;
+  languageId?: number | null;
 }
 
 export interface Node extends BaseItem {
@@ -125,7 +137,6 @@ export interface UploadFiledata {
 export interface EditFileData {
   name: string;
   position: number | undefined;
-  languageId: number | null;
 }
 
 // Store state interfaces
@@ -159,7 +170,7 @@ export interface ContentActions {
     type: NodeType,
     parentId: string | null,
     code: string | null,
-    artistId: number | null
+    artistId: number | null,
   ) => Promise<void>;
   uploadFile: (uploadFiledata: UploadFiledata) => Promise<void>;
   deleteNode: (id: string) => Promise<void>;
@@ -167,6 +178,7 @@ export interface ContentActions {
   setSortBy: (sortBy: ContentState['sortBy']) => void;
   setSortOrder: (sortOrder: ContentState['sortOrder']) => void;
   toggleItemSelection: (id: string) => void;
+  toggleDisplayToastStatus: () => void;
   setCurrentAudio: (id: string) => void;
   setIsAudioPlaying: (isPlaying: boolean) => void;
   playAudio: (id: string) => void;
@@ -174,7 +186,7 @@ export interface ContentActions {
     repoId: number,
     fileId: string,
     data: EditFileData,
-    forcePosition: boolean
+    forcePosition: boolean,
   ) => Promise<void>;
   getHierarchy: (nodeId: number) => Promise<void>;
   editFolder: (
@@ -183,9 +195,14 @@ export interface ContentActions {
       name?: string;
       artistId?: number | null;
       code?: string | null;
-    }
+    },
   ) => Promise<void>;
   setNodeActivation: (nodeId: string, isActive: boolean) => Promise<void>;
+  createRepository: (
+    nodeId: number,
+    type: (typeof REPOSITORY_KINDS)[keyof typeof REPOSITORY_KINDS],
+    languageId?: number,
+  ) => Promise<void>;
 }
 
 // API interfaces
@@ -202,7 +219,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'user';
+  role: UserRole;
 }
 
 export interface AuthResponse

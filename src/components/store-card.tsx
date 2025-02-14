@@ -1,6 +1,6 @@
-import { Store } from "@/types";
-import { Edit, Power, ExternalLink, Clock } from "lucide-react";
-import { Link } from "react-router";
+import { Store } from '@/types';
+import { Edit, Power, ExternalLink, Clock } from 'lucide-react';
+import { Link } from 'react-router';
 
 interface StoreCardProps {
   store: Store;
@@ -19,7 +19,7 @@ export function StoreCard({
         <img
           src={
             store.banner ||
-            "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&auto=format&fit=crop&q=60"
+            'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&auto=format&fit=crop&q=60'
           }
           alt={store.heading}
           className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
@@ -37,10 +37,10 @@ export function StoreCard({
             onClick={() => onToggleActivation(store.id, store.isActive)}
             className={`p-2 backdrop-blur-sm rounded-full shadow-lg transition-colors duration-200 ${
               store.isActive
-                ? "bg-green-500/95 hover:bg-green-500"
-                : "bg-gray-500/95 hover:bg-gray-500"
+                ? 'bg-green-500/95 hover:bg-green-500'
+                : 'bg-gray-500/95 hover:bg-gray-500'
             }`}
-            title={store.isActive ? "Deactivate store" : "Activate store"}
+            title={store.isActive ? 'Deactivate store' : 'Activate store'}
           >
             <Power className="w-4 h-4 text-white" />
           </button>
@@ -49,11 +49,11 @@ export function StoreCard({
           <span
             className={`px-2.5 py-1 rounded-full text-xs font-medium ${
               store.isActive
-                ? "bg-green-500/20 text-green-100 backdrop-blur-sm"
-                : "bg-gray-500/20 text-gray-100 backdrop-blur-sm"
+                ? 'bg-green-500/20 text-green-100 backdrop-blur-sm'
+                : 'bg-gray-500/20 text-gray-100 backdrop-blur-sm'
             }`}
           >
-            {store.isActive ? "Active" : "Inactive"}
+            {store.isActive ? 'Active' : 'Inactive'}
           </span>
         </div>
       </div>
@@ -72,9 +72,9 @@ export function StoreCard({
             <Clock className="w-3.5 h-3.5" />
             <span className="text-xs">
               {new Date(store.createdAt).toLocaleDateString(undefined, {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
               })}
             </span>
           </div>

@@ -1,12 +1,12 @@
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -14,12 +14,12 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import {
   Command,
   CommandEmpty,
@@ -27,31 +27,31 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
+} from '@/components/ui/command';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useState, useCallback, useEffect } from "react";
-import { Node } from "@/types";
-import { contentApi } from "@/lib/api";
-import { debounce } from "lodash";
+} from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useState, useCallback, useEffect } from 'react';
+import { Node } from '@/types';
+import { contentApi } from '@/lib/api';
+import { debounce } from 'lodash';
 
 // Separate schemas for create and edit modes
 const createStoreSchema = z.object({
-  bokunId: z.string().min(1, "Bokun ID is required"),
-  heading: z.string().min(1, "Heading is required"),
-  description: z.string().min(1, "Description is required"),
-  nodeIds: z.array(z.number()).min(1, "At least one node must be selected"),
+  bokunId: z.string().min(1, 'Bokun ID is required'),
+  heading: z.string().min(1, 'Heading is required'),
+  description: z.string().min(1, 'Description is required'),
+  nodeIds: z.array(z.number()).min(1, 'At least one node must be selected'),
   file: z.any().optional(),
 });
 
 const editStoreSchema = z.object({
-  bokunId: z.string().min(1, "Bokun ID is required"),
-  heading: z.string().min(1, "Heading is required"),
-  description: z.string().min(1, "Description is required"),
+  bokunId: z.string().min(1, 'Bokun ID is required'),
+  heading: z.string().min(1, 'Heading is required'),
+  description: z.string().min(1, 'Description is required'),
   file: z.any().optional(),
 });
 
@@ -63,7 +63,8 @@ interface StoreDialogProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: CreateStoreType | EditStoreType) => Promise<void>;
   initialData?: Partial<CreateStoreType | EditStoreType>;
-  mode: "create" | "edit";
+  mode: 'create' | 'edit';
+  isLoading: boolean;
 }
 
 export function StoreDialog({
@@ -72,25 +73,26 @@ export function StoreDialog({
   onSubmit,
   initialData,
   mode,
+  isLoading,
 }: StoreDialogProps) {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
   const [showNodeSearch, setShowNodeSearch] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Node[]>([]);
   const [selectedNodesInfo, setSelectedNodesInfo] = useState<Map<number, Node>>(
-    new Map()
+    new Map(),
   );
 
   // Use different form types based on mode
   const form = useForm<CreateStoreType | EditStoreType>({
     resolver: zodResolver(
-      mode === "create" ? createStoreSchema : editStoreSchema
+      mode === 'create' ? createStoreSchema : editStoreSchema,
     ),
     defaultValues: {
-      bokunId: "",
-      heading: "",
-      description: "",
-      ...(mode === "create" ? { nodeIds: [] } : {}),
+      bokunId: '',
+      heading: '',
+      description: '',
+      ...(mode === 'create' ? { nodeIds: [] } : {}),
     },
   });
 
@@ -98,7 +100,7 @@ export function StoreDialog({
     if (initialData) {
       form.reset(initialData);
     } else {
-      form.reset({ bokunId: "", heading: "", description: "", nodeIds: [] });
+      form.reset({ bokunId: '', heading: '', description: '', nodeIds: [] });
     }
   }, [initialData, form]);
 
@@ -112,16 +114,16 @@ export function StoreDialog({
 
       try {
         const response = await contentApi.searchNodes(term);
-        if (response.status === "success" && response.data) {
+        if (response.status === 'success' && response.data) {
           setSearchResults(response.data);
         }
       } catch (error) {
-        console.error("Error searching nodes:", error);
+        console.error('Error searching nodes:', error);
       } finally {
         setIsSearching(false);
       }
     }, 300),
-    []
+    [],
   );
 
   const handleSearchChange = (term: string) => {
@@ -135,21 +137,21 @@ export function StoreDialog({
   };
 
   const handleNodeSelect = (node: Node) => {
-    if (mode === "create") {
+    if (mode === 'create') {
       const currentNodeIds = (form.getValues() as CreateStoreType).nodeIds;
-      form.setValue("nodeIds", [...currentNodeIds, node.id] as any);
+      form.setValue('nodeIds', [...currentNodeIds, node.id] as any);
       setSelectedNodesInfo(new Map(selectedNodesInfo.set(node.id, node)));
     }
     setShowNodeSearch(false);
-    setSearchTerm("");
+    setSearchTerm('');
   };
 
   const handleRemoveNode = (nodeId: number) => {
-    if (mode === "create") {
+    if (mode === 'create') {
       const currentNodeIds = (form.getValues() as CreateStoreType).nodeIds;
       form.setValue(
-        "nodeIds",
-        currentNodeIds.filter((id) => id !== nodeId) as any
+        'nodeIds',
+        currentNodeIds.filter(id => id !== nodeId) as any,
       );
       const updatedNodesInfo = new Map(selectedNodesInfo);
       updatedNodesInfo.delete(nodeId);
@@ -158,9 +160,9 @@ export function StoreDialog({
   };
 
   const selectedNodeIds =
-    mode === "create" ? (form.watch("nodeIds") as number[]) : [];
+    mode === 'create' ? (form.watch('nodeIds') as number[]) : [];
   const filteredNodes = searchResults.filter(
-    (node) => !selectedNodeIds.includes(node.id)
+    node => !selectedNodeIds.includes(node.id),
   );
 
   return (
@@ -168,7 +170,7 @@ export function StoreDialog({
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>
-            {mode === "create" ? "Create New Store" : "Edit Store"}
+            {mode === 'create' ? 'Create New Store' : 'Edit Store'}
           </DialogTitle>
         </DialogHeader>
 
@@ -216,7 +218,7 @@ export function StoreDialog({
               )}
             />
 
-            {mode === "create" && (
+            {mode === 'create' && (
               <FormField
                 control={form.control}
                 name="nodeIds"
@@ -224,7 +226,7 @@ export function StoreDialog({
                   <FormItem>
                     <FormLabel>Nodes</FormLabel>
                     <div className="flex flex-wrap gap-2">
-                      {field?.value?.map((nodeId) => {
+                      {field?.value?.map(nodeId => {
                         const nodeInfo = selectedNodesInfo.get(nodeId);
                         return (
                           <Badge
@@ -269,7 +271,7 @@ export function StoreDialog({
                               <CommandList>
                                 <CommandEmpty>No nodes found</CommandEmpty>
                                 <CommandGroup>
-                                  {filteredNodes.map((node) => (
+                                  {filteredNodes.map(node => (
                                     <CommandItem
                                       key={node.id}
                                       onSelect={() => handleNodeSelect(node)}
@@ -300,7 +302,7 @@ export function StoreDialog({
                     <Input
                       type="file"
                       accept="image/*"
-                      onChange={(e) => field.onChange(e.target.files?.[0])}
+                      onChange={e => field.onChange(e.target.files?.[0])}
                     />
                   </FormControl>
                   <FormMessage />
@@ -308,8 +310,8 @@ export function StoreDialog({
               )}
             />
 
-            <Button type="submit" className="w-full">
-              {mode === "create" ? "Create Store" : "Update Store"}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {mode === 'create' ? 'Create Store' : 'Update Store'}
             </Button>
           </form>
         </Form>

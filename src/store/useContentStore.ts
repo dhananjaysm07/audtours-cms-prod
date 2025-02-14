@@ -33,12 +33,14 @@ const transformNodeToContentItem = (node: Node): ContentItem => ({
 
 const transformRepositoryToContentItem = (repo: Repository): ContentItem => ({
   id: `_repo:${repo.id}`,
-  name: repo.type === REPOSITORY_KINDS.AUDIO ? 'Audio' : 'Gallery',
+  name: repo.type,
   type: FOLDER_ITEM_TYPE.REPOSITORY,
   repoType: repo.type,
   createdAt: repo.createdAt,
   updatedAt: repo.updatedAt,
   isActive: repo.isActive,
+  language: repo.language,
+  languageId: repo.languageId,
 });
 
 const transformFileToContentItem = (file: RepositoryFile): ContentItem => ({
@@ -50,7 +52,6 @@ const transformFileToContentItem = (file: RepositoryFile): ContentItem => ({
   filename: file.filename,
   size: file.size,
   mimeType: file.mimeType,
-  languageId: file.languageId,
   position: file.position,
   createdAt: file.createdAt,
   updatedAt: file.updatedAt,
@@ -112,10 +113,10 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
         const repoId = id.replace('_repo:', '');
         const response = await contentApi.fetchRepositoryFiles(repoId);
         const contentItems = response.data.map(transformFileToContentItem);
-
+        console.log('Content items....', contentItems);
         // Only add to path if not clicking breadcrumb
         if (typeof pathIndex === 'undefined') {
-          const repoItem = currentState.items.find((item) => item.id === id);
+          const repoItem = currentState.items.find(item => item.id === id);
           if (repoItem) {
             newPath.push({
               id,
@@ -139,13 +140,13 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       const response = await contentApi.fetchChildren(id);
       const nodes = response.data.children.map(transformNodeToContentItem);
       const repositories = response.data.repositories.map(
-        transformRepositoryToContentItem
+        transformRepositoryToContentItem,
       );
       const contentItems = [...nodes, ...repositories];
 
       // Only add to path if not clicking breadcrumb
       if (typeof pathIndex === 'undefined') {
-        const clickedItem = currentState.items.find((item) => item.id === id);
+        const clickedItem = currentState.items.find(item => item.id === id);
         if (clickedItem) {
           newPath.push({
             id: clickedItem.id,
@@ -160,7 +161,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       const sortedItems = sortItems(
         contentItems,
         currentState.sortBy,
-        currentState.sortOrder
+        currentState.sortOrder,
       );
 
       set({
@@ -183,7 +184,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
     type: NodeType,
     parentId: string | null,
     code: string | null,
-    artistId: number | null
+    artistId: number | null,
   ) => {
     set({ isProcessing: true, error: null });
     try {
@@ -197,12 +198,12 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       const newItem = transformNodeToContentItem(response.data);
       if (response.status === 'success') toast.success('Folder created');
       // Update items and maintain sort order
-      set((state) => {
+      set(state => {
         const newItems = [...state.items, newItem];
         const newSortedItems = sortItems(
           newItems,
           state.sortBy,
-          state.sortOrder
+          state.sortOrder,
         );
 
         return {
@@ -220,7 +221,55 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
     }
   },
 
-  uploadFile: async (uploadFileData) => {
+  createRepository: async (
+    nodeId: number,
+    type: (typeof REPOSITORY_KINDS)[keyof typeof REPOSITORY_KINDS],
+    languageId?: number,
+  ) => {
+    set({ isProcessing: true, error: null });
+    try {
+      // Call the API to create the repository
+      const response = await contentApi.createRepository(
+        nodeId,
+        type,
+        languageId,
+      );
+
+      // Transform the repository into a ContentItem
+      const newItem = transformRepositoryToContentItem(response.data);
+
+      // Show success toast
+      if (response.status === 'success') {
+        toast.success(`Repository created: ${newItem.name}`);
+      }
+
+      // Update items and maintain sort order
+      set(state => {
+        const newItems = [...state.items, newItem];
+        const newSortedItems = sortItems(
+          newItems,
+          state.sortBy,
+          state.sortOrder,
+        );
+
+        return {
+          items: newItems,
+          sortedItems: newSortedItems,
+          isProcessing: false,
+        };
+      });
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to create repository',
+        isProcessing: false,
+        display_toast: true,
+      });
+    }
+  },
+  uploadFile: async uploadFileData => {
     set({ isProcessing: true, error: null });
     try {
       await contentApi.uploadFile(uploadFileData);
@@ -249,10 +298,10 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
     set({ isProcessing: true, error: null });
     try {
       await contentApi.deleteNode(id);
-      set((state) => ({
-        items: state.items.filter((item) => item.id !== id),
-        sortedItems: state.sortedItems.filter((item) => item.id !== id),
-        selectedItems: state.selectedItems.filter((itemId) => itemId !== id),
+      set(state => ({
+        items: state.items.filter(item => item.id !== id),
+        sortedItems: state.sortedItems.filter(item => item.id !== id),
+        selectedItems: state.selectedItems.filter(itemId => itemId !== id),
         isProcessing: false,
       }));
     } catch (error) {
@@ -270,22 +319,22 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       const response = await contentApi.renameNode(id, newName);
       const updatedItem = transformNodeToContentItem(response.data);
 
-      set((state) => {
+      set(state => {
         // Update items
-        const newItems = state.items.map((item) =>
-          item.id === id ? updatedItem : item
+        const newItems = state.items.map(item =>
+          item.id === id ? updatedItem : item,
         );
 
         // Update sorted items maintaining sort order
         const newSortedItems = sortItems(
           newItems,
           state.sortBy,
-          state.sortOrder
+          state.sortOrder,
         );
 
         // Update path if item exists there
-        const newPath = state.currentPath.map((segment) =>
-          segment.id === id ? { ...segment, name: newName } : segment
+        const newPath = state.currentPath.map(segment =>
+          segment.id === id ? { ...segment, name: newName } : segment,
         );
 
         return {
@@ -305,7 +354,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
   },
 
   setSortBy: (sortBy: ContentState['sortBy']) => {
-    set((state) => {
+    set(state => {
       const sortedItems = sortItems(state.items, sortBy, state.sortOrder);
       return { sortBy, sortedItems };
     });
@@ -315,7 +364,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
     repoId: number,
     fileId: string,
     data: EditFileData,
-    forcePosition: boolean = false
+    forcePosition: boolean = false,
   ) => {
     set({ isProcessing: true, error: null });
     try {
@@ -361,21 +410,21 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
       name?: string;
       artistId?: number | null;
       code?: string | null;
-    }
+    },
   ) => {
     set({ isProcessing: true, error: null });
     try {
       const response = await contentApi.editFolder(nodeId, data);
       const updatedItem = transformNodeToContentItem(response.data);
 
-      set((state) => {
-        const newItems = state.items.map((item) =>
-          item.id === nodeId ? updatedItem : item
+      set(state => {
+        const newItems = state.items.map(item =>
+          item.id === nodeId ? updatedItem : item,
         );
         const newSortedItems = sortItems(
           newItems,
           state.sortBy,
-          state.sortOrder
+          state.sortOrder,
         );
 
         return {
@@ -398,9 +447,9 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
     try {
       await contentApi.setNodeActivation(nodeId, isActive);
 
-      set((state) => {
-        const newItems = state.items.map((item) =>
-          item.id === nodeId ? { ...item, isActive } : item
+      set(state => {
+        const newItems = state.items.map(item =>
+          item.id === nodeId ? { ...item, isActive } : item,
         );
 
         return {
@@ -423,7 +472,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
     set({ isProcessing: true, error: null });
     try {
       const response = await contentApi.getHierarchy(nodeId);
-      const newpath = response.data.map((node) => ({
+      const newpath = response.data.map(node => ({
         id: String(node.id),
         name: node.name,
         type: FOLDER_ITEM_TYPE.FOLDER,
@@ -456,18 +505,24 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
   },
 
   setSortOrder: (sortOrder: ContentState['sortOrder']) => {
-    set((state) => {
+    set(state => {
       const sortedItems = sortItems(state.items, state.sortBy, sortOrder);
       return { sortOrder, sortedItems };
     });
   },
 
   toggleItemSelection: (id: string) => {
-    set((state) => ({
+    set(state => ({
       selectedItems: state.selectedItems.includes(id)
-        ? state.selectedItems.filter((itemId) => itemId !== id)
+        ? state.selectedItems.filter(itemId => itemId !== id)
         : [...state.selectedItems, id],
     }));
+  },
+
+  toggleDisplayToastStatus: () => {
+    set(state => {
+      return { display_toast: !state.display_toast };
+    });
   },
 
   setCurrentAudio: (id: string) => {
@@ -480,7 +535,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
 
   playAudio: (id: string) => {
     const { items } = get();
-    const audioIndex = items.findIndex((item) => item.id === id);
+    const audioIndex = items.findIndex(item => item.id === id);
     if (audioIndex !== -1) {
       set({
         currentAudioId: id,
@@ -494,7 +549,7 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
 const sortItems = (
   items: ContentItem[],
   sortBy: ContentState['sortBy'],
-  sortOrder: ContentState['sortOrder']
+  sortOrder: ContentState['sortOrder'],
 ): ContentItem[] => {
   return [...items].sort((a, b) => {
     if (sortBy === 'name') {

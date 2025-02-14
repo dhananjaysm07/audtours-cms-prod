@@ -1,8 +1,7 @@
-import { Store } from "@/types";
-import { Plus } from "lucide-react";
-import { StoreCard } from "./store-card";
-import LoadingSpinner from "./spinner";
-import { Button } from "./ui/button";
+import { Store } from '@/types';
+import { StoreCard } from './store-card';
+import LoadingSpinner from './spinner';
+import { Button } from './ui/button';
 
 interface StoreGridProps {
   stores: Store[];
@@ -57,7 +56,7 @@ export function StoreGrid({
           </div>
         ) : (
           <>
-            {stores.map((store) => (
+            {stores.map(store => (
               <StoreCard
                 key={store.id}
                 store={store}

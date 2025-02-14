@@ -60,7 +60,7 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Node[]>([]);
   const [selectedNodesInfo, setSelectedNodesInfo] = useState<Map<number, Node>>(
-    new Map()
+    new Map(),
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverTime, setServerTime] = useState<Date | null>(null);
@@ -86,7 +86,7 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
         setIsSearching(false);
       }
     }, SEARCH_DEBOUNCE_MS),
-    [setSearchResults, setIsSearching]
+    [setSearchResults, setIsSearching],
   );
 
   // Fetch server time
@@ -107,7 +107,7 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
       fetchServerTime();
       const interval = setInterval(
         fetchServerTime,
-        SERVER_TIME_REFRESH_INTERVAL
+        SERVER_TIME_REFRESH_INTERVAL,
       );
       return () => clearInterval(interval);
     }
@@ -140,13 +140,13 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
         setSearchResults([]);
       }
     },
-    [debouncedSearch]
+    [debouncedSearch],
   );
 
   const selectedNodeIds = form.watch('nodeIds') || [];
 
   const filteredNodes = searchResults.filter(
-    (node) => !selectedNodeIds.includes(node.id)
+    node => !selectedNodeIds.includes(node.id),
   );
 
   const handleNodeSelect = useCallback(
@@ -157,7 +157,7 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
       setShowNodeSearch(false);
       setSearchTerm('');
     },
-    [form, selectedNodesInfo]
+    [form, selectedNodesInfo],
   );
 
   const handleRemoveNode = useCallback(
@@ -165,13 +165,13 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
       const currentNodeIds = form.getValues('nodeIds') || [];
       form.setValue(
         'nodeIds',
-        currentNodeIds.filter((id) => id !== nodeId)
+        currentNodeIds.filter(id => id !== nodeId),
       );
       const updatedNodesInfo = new Map(selectedNodesInfo);
       updatedNodesInfo.delete(nodeId);
       setSelectedNodesInfo(updatedNodesInfo);
     },
-    [form, selectedNodesInfo]
+    [form, selectedNodesInfo],
   );
 
   const handleSubmit = async (values: z.infer<typeof createCodeSchema>) => {
@@ -189,7 +189,7 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DialogTrigger asChild>
         <Button size="sm" className="gap-1">
-          + Create Code
+          + Generate New Tour
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -227,7 +227,7 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
                   <FormLabel>Nodes</FormLabel>
                   <div className="space-y-2">
                     <div className="flex flex-wrap gap-1.5">
-                      {field.value.map((nodeId) => {
+                      {field.value.map(nodeId => {
                         const nodeInfo = selectedNodesInfo.get(nodeId);
                         return (
                           <Badge
@@ -280,7 +280,7 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
                                 ) : (
                                   <>
                                     <CommandEmpty>No nodes found</CommandEmpty>
-                                    {filteredNodes.map((node) => (
+                                    {filteredNodes.map(node => (
                                       <CommandItem
                                         value={node.path}
                                         key={node.id}
@@ -316,7 +316,7 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
                           type="number"
                           min={0}
                           {...field}
-                          onChange={(e) =>
+                          onChange={e =>
                             field.onChange(parseInt(e.target.value))
                           }
                           placeholder="Days"
@@ -340,7 +340,7 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
                           min={0}
                           max={23}
                           {...field}
-                          onChange={(e) =>
+                          onChange={e =>
                             field.onChange(parseInt(e.target.value))
                           }
                           placeholder="Hours"
@@ -365,7 +365,7 @@ const CreateCodeDialog: React.FC<CreateCodeDialogProps> = ({
                           type="number"
                           min={1}
                           {...field}
-                          onChange={(e) =>
+                          onChange={e =>
                             field.onChange(parseInt(e.target.value))
                           }
                           placeholder="Enter maximum users"

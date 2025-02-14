@@ -1,10 +1,8 @@
-import { StoreGrid } from "@/components/store-grid";
-import { StoreDialog } from "@/components/store-dialog";
-import { useStorefrontStore } from "@/store/useStoreFrontStore";
-import { useEffect, useState } from "react";
-import { Store } from "@/types";
-import { Skeleton } from "@/components/ui/skeleton";
-import LoadingSpinner from "@/components/spinner";
+import { StoreGrid } from '@/components/store-grid';
+import { StoreDialog } from '@/components/store-dialog';
+import { useStorefrontStore } from '@/store/useStoreFrontStore';
+import { useEffect, useState } from 'react';
+import { Store } from '@/types';
 
 function StorePage() {
   const {
@@ -24,7 +22,7 @@ function StorePage() {
   }, [fetchStores]);
 
   const handleEdit = (id: number) => {
-    const store = stores.find((s) => s.id === id);
+    const store = stores.find(s => s.id === id);
     if (store) {
       setSelectedStore(store);
       setDialogOpen(true);
@@ -32,7 +30,6 @@ function StorePage() {
   };
 
   const handleCreateNew = () => {
-    console.log("Create new function called..", dialogOpen);
     setSelectedStore(null);
     setDialogOpen(true);
   };
@@ -49,7 +46,7 @@ function StorePage() {
         await createStore(data);
       }
     } catch (error) {
-      console.error("Error submitting store:", error);
+      console.error('Error submitting store:', error);
     }
   };
 
@@ -74,7 +71,8 @@ function StorePage() {
         onOpenChange={setDialogOpen}
         onSubmit={handleSubmit}
         initialData={selectedStore || undefined}
-        mode={selectedStore ? "edit" : "create"}
+        mode={selectedStore ? 'edit' : 'create'}
+        isLoading={isLoading}
       />
     </div>
   );

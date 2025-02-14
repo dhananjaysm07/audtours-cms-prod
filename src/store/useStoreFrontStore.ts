@@ -1,8 +1,8 @@
-import { storeApi } from "@/lib/api";
-import { CreateStorePayload } from "@/lib/api/store";
-import { Store } from "@/types";
-import { create } from "zustand";
-import { toast } from "sonner";
+import { storeApi } from '@/lib/api';
+import { CreateStorePayload } from '@/lib/api/store';
+import { Store } from '@/types';
+import { create } from 'zustand';
+import { toast } from 'sonner';
 
 interface StorefrontState {
   stores: Store[];
@@ -18,7 +18,7 @@ interface StorefrontState {
   toggleStoreActivation: (id: number, isActive: boolean) => Promise<void>;
 }
 
-export const useStorefrontStore = create<StorefrontState>((set, get) => ({
+export const useStorefrontStore = create<StorefrontState>(set => ({
   stores: [],
   currentStore: null,
   isLoading: false,
@@ -38,7 +38,7 @@ export const useStorefrontStore = create<StorefrontState>((set, get) => ({
       });
     } catch (error) {
       const error_message =
-        error instanceof Error ? error.message : "Failed to fetch stores";
+        error instanceof Error ? error.message : 'Failed to fetch stores';
       set({
         error: error_message,
         error_status: error instanceof Response ? error.status : 500,
@@ -60,7 +60,7 @@ export const useStorefrontStore = create<StorefrontState>((set, get) => ({
       });
     } catch (error) {
       const error_message =
-        error instanceof Error ? error.message : "Failed to fetch store";
+        error instanceof Error ? error.message : 'Failed to fetch store';
       set({
         error: error_message,
         error_status: error instanceof Response ? error.status : 500,
@@ -74,16 +74,16 @@ export const useStorefrontStore = create<StorefrontState>((set, get) => ({
     set({ isLoading: true });
     try {
       const response = await storeApi.createStore(data);
-      set((state) => ({
+      set(state => ({
         stores: [response.data, ...state.stores],
         isLoading: false,
         error: null,
         error_status: null,
       }));
-      toast.success("Store created successfully");
+      toast.success('Store created successfully');
     } catch (error) {
       const error_message =
-        error instanceof Error ? error.message : "Failed to create store";
+        error instanceof Error ? error.message : 'Failed to create store';
       set({
         error: error_message,
         error_status: error instanceof Response ? error.status : 500,
@@ -97,18 +97,18 @@ export const useStorefrontStore = create<StorefrontState>((set, get) => ({
     set({ isLoading: true });
     try {
       const response = await storeApi.updateStore(id, data);
-      set((state) => ({
-        stores: state.stores.map((store) =>
-          store.id === id ? response.data : store
+      set(state => ({
+        stores: state.stores.map(store =>
+          store.id === id ? response.data : store,
         ),
         isLoading: false,
         error: null,
         error_status: null,
       }));
-      toast.success("Store updated successfully");
+      toast.success('Store updated successfully');
     } catch (error) {
       const error_message =
-        error instanceof Error ? error.message : "Failed to update store";
+        error instanceof Error ? error.message : 'Failed to update store';
       set({
         error: error_message,
         error_status: error instanceof Response ? error.status : 500,
@@ -121,21 +121,21 @@ export const useStorefrontStore = create<StorefrontState>((set, get) => ({
   toggleStoreActivation: async (id: number, isActive: boolean) => {
     try {
       const response = await storeApi.toggleStoreActivation(id, { isActive });
-      set((state) => ({
-        stores: state.stores.map((store) =>
-          store.id === id ? response.data : store
+      set(state => ({
+        stores: state.stores.map(store =>
+          store.id === id ? response.data : store,
         ),
         error: null,
         error_status: null,
       }));
       toast.success(
-        `Store ${isActive ? "activated" : "deactivated"} successfully`
+        `Store ${isActive ? 'activated' : 'deactivated'} successfully`,
       );
     } catch (error) {
       const error_message =
         error instanceof Error
           ? error.message
-          : "Failed to toggle store activation status";
+          : 'Failed to toggle store activation status';
       set({
         error: error_message,
         error_status: error instanceof Response ? error.status : 500,

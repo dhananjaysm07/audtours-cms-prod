@@ -22,6 +22,7 @@ import {
   Globe,
   MapPin,
   Compass,
+  Plus,
 } from 'lucide-react';
 import {
   Dialog,
@@ -72,6 +73,7 @@ import {
   REPOSITORY_KINDS,
   UploadDialogPropsType,
   NODE_TYPES,
+  FOLDER_ITEM_TYPE,
 } from '@/types';
 import LoadingSpinner from '@/components/spinner';
 import { toast } from 'sonner';
@@ -80,10 +82,11 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLanguageStore } from '@/store/useLanguageStore';
-import LanguageManagementDialog from '@/components/LanguageManagementDialog';
+import LanguageManagementDialog from '@/components/language-management-dialog';
 import ArtistManagementDialog from '@/components/artist-management-dialog';
 import { useArtistStore } from '@/store/useArtistStore';
 import { useSearchParams } from 'react-router';
+import { CreateRepositoryDialog } from '@/components/create-repo-dialog';
 
 interface PathSegment {
   id: string;
@@ -97,14 +100,13 @@ const UploadDialogSchema = z.object({
   file: z.instanceof(File).optional(),
   name: z.string().min(1, 'Name is required'),
   position: z.string().optional(),
-  languageId: z.union([z.number(), z.null()]).optional(),
 });
 
 type UploadDialogFormState = z.infer<typeof UploadDialogSchema>;
 
 const getBreadcrumb = (
   currentPath: PathSegment[],
-  onBreadcrumbClick: (segment: PathSegment, index: number) => void
+  onBreadcrumbClick: (segment: PathSegment, index: number) => void,
 ) => {
   return (
     <Breadcrumb>
@@ -170,12 +172,8 @@ const getNodeBadge = (nodeType: NodeType) => {
   }
 };
 
-const isFileUploadAvailable = ({ type }: { type: FolderItemType }) => {
-  return type === 'repository';
-};
-
 const UploadDialog = ({
-  allowedTypes = ['image', 'audio'],
+  allowedTypes = ['image', 'audio', 'application/pdf'],
   isOpen,
   setIsOpen,
 }: UploadDialogPropsType) => {
@@ -185,7 +183,6 @@ const UploadDialog = ({
       file: undefined,
       name: '',
       position: '',
-      languageId: null,
     },
   });
 
@@ -197,30 +194,21 @@ const UploadDialog = ({
     error_status,
     error,
     display_toast,
+    toggleDisplayToastStatus,
   } = useContentStore();
 
-  const { languages, fetchLanguages } = useLanguageStore();
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [conflictMessage, setConflictMessage] = useState('');
-  const [isAddLanguageOpen, setIsAddLanguageOpen] = useState(false);
-  const [firstRender, setFirstRender] = useState(true);
-  useEffect(() => {
-    fetchLanguages();
-  }, []);
 
   useEffect(() => {
-    if (firstRender) {
-      setFirstRender(false);
-    }
-    if (!firstRender) {
-      if (error_status === 409 && error) {
-        setConflictMessage(error);
-        setShowConflictDialog(true);
-      } else if (error == null && display_toast && !isProcessing) {
-        setIsOpen(false);
-        form.reset();
-        toast.success('File uploaded successfully');
-      }
+    if (error_status === 409 && error) {
+      setConflictMessage(error);
+      setShowConflictDialog(true);
+    } else if (error == null && display_toast && !isProcessing) {
+      setIsOpen(false);
+      form.reset();
+      toast.success('File uploaded successfully');
+      toggleDisplayToastStatus();
     }
   }, [error_status, error, display_toast]);
 
@@ -228,7 +216,7 @@ const UploadDialog = ({
     const selectedFile = event.target.files?.[0];
     if (
       selectedFile &&
-      allowedTypes.some((type) => selectedFile.type.startsWith(`${type}/`))
+      allowedTypes.some(type => selectedFile.type.startsWith(`${type}`))
     ) {
       form.setValue('file', selectedFile);
     } else {
@@ -238,7 +226,7 @@ const UploadDialog = ({
 
   const handleUpload = async (
     data: UploadDialogFormState,
-    forcePosition = false
+    forcePosition = false,
   ) => {
     if (!data.file) return;
     try {
@@ -251,7 +239,6 @@ const UploadDialog = ({
         position,
         repoId: currentNodeId.split(':')[1],
         force_position: forcePosition,
-        languageId: data.languageId,
       };
       await uploadFile(uploadData);
     } catch (error) {
@@ -265,7 +252,6 @@ const UploadDialog = ({
       toast.error('Failed to upload file');
     }
   };
-
   return (
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -275,7 +261,7 @@ const UploadDialog = ({
           </DialogHeader>
           <Form {...form}>
             <form
-              onSubmit={form.handleSubmit((data) => handleUpload(data))}
+              onSubmit={form.handleSubmit(data => handleUpload(data))}
               className="space-y-4"
             >
               <FormField
@@ -289,7 +275,12 @@ const UploadDialog = ({
                         type="file"
                         onChange={handleFileChange}
                         accept={allowedTypes
-                          .map((type) => `${type}/*`)
+                          .map(
+                            type =>
+                              `${
+                                type.split('/').length > 1 ? type : type + '/*'
+                              }`,
+                          )
                           .join(',')}
                       />
                     </FormControl>
@@ -323,52 +314,6 @@ const UploadDialog = ({
                   </FormItem>
                 )}
               />
-              {currentPath[currentPath.length - 1].repoType ==
-                REPOSITORY_KINDS.AUDIO && (
-                <FormField
-                  control={form.control}
-                  name="languageId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Language</FormLabel>
-                      <FormControl>
-                        <div className="flex justify-between items-center">
-                          <Select
-                            value={field.value?.toString()}
-                            onValueChange={(value) =>
-                              field.onChange(value ? Number(value) : null)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select language" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {languages
-                                .filter((lang) => lang.isActive)
-                                .map((lang) => (
-                                  <SelectItem
-                                    key={lang.id}
-                                    value={lang.id.toString()}
-                                  >
-                                    {lang.name}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setIsAddLanguageOpen(true)}
-                          >
-                            Manage Languages
-                          </Button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
               <Button
                 type="submit"
                 disabled={!form.watch('file') || isProcessing || isLoading}
@@ -379,11 +324,6 @@ const UploadDialog = ({
           </Form>
         </DialogContent>
       </Dialog>
-
-      <LanguageManagementDialog
-        isOpen={isAddLanguageOpen}
-        onOpenChange={setIsAddLanguageOpen}
-      />
 
       <AlertDialog
         open={showConflictDialog}
@@ -445,7 +385,7 @@ const CreateFolderDialog = () => {
           folderType as NodeType,
           parentId,
           folderType === NODE_TYPES.STOP ? code : null,
-          folderType === NODE_TYPES.STOP ? artistId : null
+          folderType === NODE_TYPES.STOP ? artistId : null,
         );
         setIsOpen(false);
         setFolderName('');
@@ -464,15 +404,15 @@ const CreateFolderDialog = () => {
   const getAvailableTypes = () => {
     switch (lastSegment.nodeType?.toLowerCase()) {
       case 'location':
-        return ['map', 'spot', 'stop'];
+        return ['map'];
       case 'map':
-        return ['spot', 'stop'];
+        return ['spot'];
       case 'spot':
         return ['stop'];
       case 'stop':
         return [];
       default:
-        return ['location', 'map', 'spot', 'stop'];
+        return ['location'];
     }
   };
 
@@ -509,14 +449,14 @@ const CreateFolderDialog = () => {
           <Input
             placeholder="Folder Name"
             value={folderName}
-            onChange={(e) => setFolderName(e.target.value)}
+            onChange={e => setFolderName(e.target.value)}
           />
           <Select onValueChange={setFolderType}>
             <SelectTrigger>
               <SelectValue placeholder="Select folder type" />
             </SelectTrigger>
             <SelectContent>
-              {getAvailableTypes().map((type) => (
+              {getAvailableTypes().map(type => (
                 <SelectItem key={type} value={type}>
                   {type.charAt(0).toUpperCase() + type.slice(1)}
                 </SelectItem>
@@ -530,17 +470,17 @@ const CreateFolderDialog = () => {
               <Input
                 placeholder="Code (optional)"
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={e => setCode(e.target.value)}
               />
               <div className="flex gap-2">
-                <Select onValueChange={(value) => setArtistId(Number(value))}>
+                <Select onValueChange={value => setArtistId(Number(value))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select artist (optional)" />
                   </SelectTrigger>
                   <SelectContent>
                     {artists
-                      .filter((artist) => artist.isActive)
-                      .map((artist) => (
+                      .filter(artist => artist.isActive)
+                      .map(artist => (
                         <SelectItem key={artist.id} value={String(artist.id)}>
                           {artist.name}
                         </SelectItem>
@@ -610,8 +550,8 @@ const FolderView = () => {
     event.stopPropagation();
 
     const files = Array.from(event.dataTransfer.files);
-    const acceptedFiles = files.filter((file) =>
-      ['image/', 'audio/'].some((type) => file.type.startsWith(type))
+    const acceptedFiles = files.filter(file =>
+      ['image/', 'audio/'].some(type => file.type.startsWith(type)),
     );
 
     if (acceptedFiles.length) {
@@ -640,11 +580,11 @@ const FolderView = () => {
       onDragEnd={handleDrop}
       onDragOver={handleDragOver}
       className="cursor-auto"
-      onKeyDownCapture={(e) =>
+      onKeyDownCapture={e =>
         e.key === 'Escape' &&
-        selectedItems.forEach((item) => toggleItemSelection(item))
+        selectedItems.forEach(item => toggleItemSelection(item))
       }
-      onClick={() => selectedItems.forEach((item) => toggleItemSelection(item))}
+      onClick={() => selectedItems.forEach(item => toggleItemSelection(item))}
     >
       <div className="flex-1 flex flex-wrap gap-6 p-2 overflow-y-auto scroll-smooth h-full justify-start items-start rounded-lg">
         {isLoading ? (
@@ -661,10 +601,29 @@ const FolderView = () => {
   );
 };
 
+const isFileUploadAvailable = ({ type }: { type: FolderItemType }) => {
+  return type == FOLDER_ITEM_TYPE.REPOSITORY;
+};
+
+const isCreateRepoAvailable = ({
+  type,
+  node_type,
+}: {
+  type: FolderItemType;
+  node_type: NodeType | undefined;
+}) => {
+  return (
+    type == FOLDER_ITEM_TYPE.FOLDER &&
+    node_type != NODE_TYPES.LOCATION &&
+    node_type
+  );
+};
+
 const ContentExplorer = () => {
   const [isOpenUploadDialog, setIsOpenUploadDialog] = useState(false);
   const [searchParams] = useSearchParams();
   const parentNodeId = searchParams.get('parentNodeId');
+  const [isOpenCreateRepoDialog, setIsOpenCreateRepoDialog] = useState(false);
   const {
     isLoading,
     setIsLoading,
@@ -689,7 +648,7 @@ const ContentExplorer = () => {
     };
     if (!parentNodeId) initializeStore();
     else getHierarchy(Number(parentNodeId));
-  }, [parentNodeId]);
+  }, [getHierarchy, navigateTo, parentNodeId, setIsLoading]);
 
   const handleBreadcrumbClick = async (segment: PathSegment, index: number) => {
     try {
@@ -714,7 +673,7 @@ const ContentExplorer = () => {
 
   useEffect(() => {
     if (error && display_toast) toast.error(error);
-  }, [error]);
+  }, [display_toast, error]);
 
   return (
     <div className="flex flex-col bg-white p-4 rounded-lg gap-4 flex-1">
@@ -772,6 +731,21 @@ const ContentExplorer = () => {
             >
               <FileUp size={16} />
             </Button>
+            <CreateFolderDialog />
+            <Button
+              size="sm"
+              variant="secondary"
+              className="min-w-0"
+              onClick={() => setIsOpenCreateRepoDialog(true)}
+              disabled={
+                !isCreateRepoAvailable({
+                  type: currentSegment.type,
+                  node_type: currentSegment.nodeType,
+                })
+              }
+            >
+              + Create Repo
+            </Button>
             {isOpenUploadDialog ? (
               <UploadDialog
                 isOpen={isOpenUploadDialog}
@@ -781,13 +755,20 @@ const ContentExplorer = () => {
               ''
             )}
 
-            <CreateFolderDialog />
             <SortDropdown />
           </div>
         </div>
         <FolderView />
         {currentPath.slice(-1)?.[0]?.repoType == REPOSITORY_KINDS.AUDIO ? (
           <AudioPlayer />
+        ) : (
+          ''
+        )}
+        {isOpenCreateRepoDialog ? (
+          <CreateRepositoryDialog
+            isOpen={isOpenCreateRepoDialog}
+            setIsOpen={setIsOpenCreateRepoDialog}
+          />
         ) : (
           ''
         )}
