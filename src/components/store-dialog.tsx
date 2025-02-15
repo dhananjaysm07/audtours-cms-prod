@@ -77,7 +77,6 @@ export function StoreDialog({
 }: StoreDialogProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showNodeSearch, setShowNodeSearch] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Node[]>([]);
   const [selectedNodesInfo, setSelectedNodesInfo] = useState<Map<number, Node>>(
     new Map(),
@@ -108,7 +107,6 @@ export function StoreDialog({
     debounce(async (term: string) => {
       if (!term.trim()) {
         setSearchResults([]);
-        setIsSearching(false);
         return;
       }
 
@@ -119,8 +117,6 @@ export function StoreDialog({
         }
       } catch (error) {
         console.error('Error searching nodes:', error);
-      } finally {
-        setIsSearching(false);
       }
     }, 300),
     [],
@@ -129,7 +125,6 @@ export function StoreDialog({
   const handleSearchChange = (term: string) => {
     setSearchTerm(term);
     if (term.trim()) {
-      setIsSearching(true);
       debouncedSearch(term);
     } else {
       setSearchResults([]);

@@ -66,8 +66,8 @@ export default function Codes() {
   const [usersPagination, setUsersPagination] =
     useState<PaginationMeta>(DEFAULT_PAGINATION);
   const [userSearch, setUserSearch] = useState('');
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [userCodes, setUserCodes] = useState<CodeResponse[]>([]);
+  // const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  // const [userCodes, setUserCodes] = useState<CodeResponse[]>([]);
   const [showingUserCodes, setShowingUserCodes] = useState(false);
   const [visibleOtps, setVisibleOtps] = useState<Record<string, boolean>>({});
 
@@ -103,7 +103,7 @@ export default function Codes() {
 
         const response = await subscriptionApi.getCodes(
           page ?? pagination.page,
-          limit ?? pagination.limit
+          limit ?? pagination.limit,
         );
 
         if (response.status === 'success') {
@@ -121,7 +121,7 @@ export default function Codes() {
         setIsLoading(false);
       }
     },
-    [pagination.page, pagination.limit]
+    [pagination.page, pagination.limit],
   );
 
   const loadUsers = useCallback(
@@ -132,7 +132,7 @@ export default function Codes() {
 
         const response = await userApi.getUsers(
           page ?? usersPagination.page,
-          limit ?? usersPagination.limit
+          limit ?? usersPagination.limit,
         );
 
         if (response.status === 'success') {
@@ -150,7 +150,7 @@ export default function Codes() {
         setIsLoading(false);
       }
     },
-    [usersPagination.page, usersPagination.limit]
+    [usersPagination.page, usersPagination.limit],
   );
 
   const handleCodesSearch = useCallback(
@@ -176,7 +176,7 @@ export default function Codes() {
         setIsLoading(false);
       }
     },
-    [loadCodes, pagination.limit]
+    [loadCodes, pagination.limit],
   );
 
   const handleUserSearch = useCallback(
@@ -202,38 +202,38 @@ export default function Codes() {
         setIsLoading(false);
       }
     },
-    [loadUsers, usersPagination.limit]
+    [loadUsers, usersPagination.limit],
   );
 
   const handleShowOtp = useCallback(
     (userId: number, field: 'otp' | 'resetPasswordOTP') => {
-      setVisibleOtps((prev) => ({ ...prev, [`${userId}-${field}`]: true }));
+      setVisibleOtps(prev => ({ ...prev, [`${userId}-${field}`]: true }));
       setTimeout(() => {
-        setVisibleOtps((prev) => ({ ...prev, [`${userId}-${field}`]: false }));
+        setVisibleOtps(prev => ({ ...prev, [`${userId}-${field}`]: false }));
       }, 10000);
     },
-    []
+    [],
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleGetUserCodes = useCallback(async (userId: number) => {
-    try {
-      setIsLoading(true);
-      const response = await userApi.getUserCodes(userId);
-      if (response.status === 'success') {
-        setUserCodes(response.data);
-        setSelectedUserId(userId);
-        setShowingUserCodes(true);
-      } else {
-        toast.error(response.message || 'Failed to load user codes');
-      }
-    } catch (error) {
-      toast.error('Failed to load user codes');
-      console.error('Failed to load user codes:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // const handleGetUserCodes = useCallback(async (userId: number) => {
+  //   try {
+  //     setIsLoading(true);
+  //     const response = await userApi.getUserCodes(userId);
+  //     if (response.status === 'success') {
+  //       setUserCodes(response.data);
+  //       setSelectedUserId(userId);
+  //       setShowingUserCodes(true);
+  //     } else {
+  //       toast.error(response.message || 'Failed to load user codes');
+  //     }
+  //   } catch (error) {
+  //     toast.error('Failed to load user codes');
+  //     console.error('Failed to load user codes:', error);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // }, []);
 
   useEffect(() => {
     if (mounted) {
@@ -257,7 +257,7 @@ export default function Codes() {
         console.error('Failed to deactivate code:', error);
       }
     },
-    [loadCodes]
+    [loadCodes],
   );
 
   useEffect(() => {
@@ -278,10 +278,10 @@ export default function Codes() {
 
       const parentHeight = parent.offsetHeight;
       const siblingHeight = Array.from(parent.children)
-        .filter((child) => child !== containerRef.current)
+        .filter(child => child !== containerRef.current)
         .reduce(
           (total, child) => total + (child as HTMLElement).offsetHeight,
-          0
+          0,
         );
 
       const availableHeight = parentHeight - siblingHeight - 32;
@@ -296,7 +296,7 @@ export default function Codes() {
   }, [mounted]);
 
   const filteredCodes = useMemo(() => {
-    return codes.filter((code) => {
+    return codes.filter(code => {
       if (filter === 'all') return true;
       return filter === 'active' ? code.isActive : !code.isActive;
     });
@@ -318,7 +318,7 @@ export default function Codes() {
         console.error('Failed to create code:', error);
       }
     },
-    [loadCodes, setCreateDialogOpen]
+    [loadCodes, setCreateDialogOpen],
   );
 
   const handleUpdateCode = useCallback(
@@ -326,7 +326,7 @@ export default function Codes() {
       try {
         const response = await subscriptionApi.updateCode(
           selectedCodeId as number,
-          data
+          data,
         );
         if (response.status === 'success') {
           toast.success('Code updated successfully');
@@ -340,7 +340,7 @@ export default function Codes() {
         console.error('Failed to update code:', error);
       }
     },
-    [loadCodes, setUpdateDialogOpen, selectedCodeId]
+    [loadCodes, setUpdateDialogOpen, selectedCodeId],
   );
 
   if (!mounted) return null;
@@ -365,7 +365,7 @@ export default function Codes() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">
-                {codes?.filter((code) => code.isActive)?.length ?? 0}
+                {codes?.filter(code => code.isActive)?.length ?? 0}
               </p>
             </CardContent>
           </Card>
@@ -428,7 +428,7 @@ export default function Codes() {
                   <Input
                     placeholder="Search Codes..."
                     value={search}
-                    onChange={(e) => {
+                    onChange={e => {
                       setSearch(e.target.value);
                       handleCodesSearch(e.target.value);
                     }}
@@ -452,7 +452,7 @@ export default function Codes() {
                 <Input
                   placeholder="Search users..."
                   value={userSearch}
-                  onChange={(e) => {
+                  onChange={e => {
                     setUserSearch(e.target.value);
                     handleUserSearch(e.target.value);
                   }}
@@ -492,12 +492,12 @@ export default function Codes() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredCodes.map((code) => (
+                      {filteredCodes.map(code => (
                         <TableRow key={code.codeId}>
                           <TableCell>{code.code}</TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
-                              {code.nodes?.map((node) => (
+                              {code.nodes?.map(node => (
                                 <Badge
                                   key={node.nodeId}
                                   variant="secondary"
@@ -559,7 +559,7 @@ export default function Codes() {
                     Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
                     {Math.min(
                       pagination.page * pagination.limit,
-                      pagination.total
+                      pagination.total,
                     )}{' '}
                     of {pagination.total} results
                   </div>
@@ -594,9 +594,9 @@ export default function Codes() {
                     >
                       Back to Users
                     </Button>
-                    <h3 className="text-lg font-semibold mb-4">
+                    {/* <h3 className="text-lg font-semibold mb-4">
                       Codes for User #{selectedUserId}
-                    </h3>
+                    </h3> */}
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -607,7 +607,7 @@ export default function Codes() {
                           <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
-                      <TableBody>
+                      {/* <TableBody>
                         {userCodes.map((code) => (
                           <TableRow key={code.codeId}>
                             <TableCell>{code.code}</TableCell>
@@ -643,7 +643,7 @@ export default function Codes() {
                             </TableCell>
                           </TableRow>
                         ))}
-                      </TableBody>
+                      </TableBody> */}
                     </Table>
                   </div>
                 ) : (
@@ -660,7 +660,7 @@ export default function Codes() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {users.map((user) => (
+                      {users.map(user => (
                         <TableRow key={user.id}>
                           <TableCell>{user.id}</TableCell>
                           <TableCell>{user.name}</TableCell>
@@ -732,7 +732,7 @@ export default function Codes() {
                     {(usersPagination.page - 1) * usersPagination.limit + 1} to{' '}
                     {Math.min(
                       usersPagination.page * usersPagination.limit,
-                      usersPagination.total
+                      usersPagination.total,
                     )}{' '}
                     of {usersPagination.total} results
                   </div>

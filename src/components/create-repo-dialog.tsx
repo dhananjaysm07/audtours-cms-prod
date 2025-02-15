@@ -16,7 +16,6 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import { toast } from 'sonner';
 import { z } from 'zod';
 import { REPOSITORY_KINDS } from '@/types';
 import { useContentStore } from '@/store/useContentStore';

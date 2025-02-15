@@ -22,7 +22,7 @@ import {
   Globe,
   MapPin,
   Compass,
-  Plus,
+  // Plus,
 } from 'lucide-react';
 import {
   Dialog,
@@ -81,8 +81,8 @@ import { capitalize } from '@/lib/utils';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useLanguageStore } from '@/store/useLanguageStore';
-import LanguageManagementDialog from '@/components/language-management-dialog';
+// import { useLanguageStore } from '@/store/useLanguageStore';
+// import LanguageManagementDialog from '@/components/language-management-dialog';
 import ArtistManagementDialog from '@/components/artist-management-dialog';
 import { useArtistStore } from '@/store/useArtistStore';
 import { useSearchParams } from 'react-router';
