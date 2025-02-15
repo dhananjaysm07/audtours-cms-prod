@@ -4,6 +4,7 @@ import { ApiError } from './errors';
 import { config } from '@/config/config';
 
 export const createApiUrl = (endpoint: string): string => {
+  console.log('API URL', `${config.API_URL}${endpoint}`);
   return `${config.API_URL}${endpoint}`;
 };
 
