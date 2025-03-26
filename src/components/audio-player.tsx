@@ -1,8 +1,8 @@
-import { useContentStore } from "@/store/useContentStore";
-import { useState, useEffect, useRef } from "react";
-import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
-import { Languages, Pause, Play, SkipBack, SkipForward } from "lucide-react";
-import { Slider } from "@/components/ui/slider";
+import { useContentStore } from '@/store/useContentStore';
+import { useState, useEffect, useRef } from 'react';
+import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
+import { Languages, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
 const AudioPlayer = () => {
   const [{ currentTime, duration }, setState] = useState({
     currentTime: 0,
@@ -19,7 +19,7 @@ const AudioPlayer = () => {
     setCurrentAudio,
   } = useContentStore();
 
-  const currentTrack = items.find((item) => item.id === currentAudioId);
+  const currentTrack = items.find(item => item.id === currentAudioId);
 
   useEffect(() => {
     if (currentTrack?.path) {
@@ -31,14 +31,14 @@ const AudioPlayer = () => {
       audioRef.current = new Audio(currentTrack.path);
 
       const handleLoadedMetadata = () => {
-        setState((prev) => ({
+        setState(prev => ({
           ...prev,
           duration: audioRef.current?.duration || 0,
         }));
       };
 
       const handleTimeUpdate = () => {
-        setState((prev) => ({
+        setState(prev => ({
           ...prev,
           currentTime: audioRef.current?.currentTime || 0,
         }));
@@ -49,9 +49,9 @@ const AudioPlayer = () => {
         handleNext();
       };
 
-      audioRef.current.addEventListener("loadedmetadata", handleLoadedMetadata);
-      audioRef.current.addEventListener("timeupdate", handleTimeUpdate);
-      audioRef.current.addEventListener("ended", handleEnded);
+      audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+      audioRef.current.addEventListener('timeupdate', handleTimeUpdate);
+      audioRef.current.addEventListener('ended', handleEnded);
 
       if (isAudioPlaying) {
         void audioRef.current.play();
@@ -60,11 +60,11 @@ const AudioPlayer = () => {
       return () => {
         if (audioRef.current) {
           audioRef.current.removeEventListener(
-            "loadedmetadata",
-            handleLoadedMetadata
+            'loadedmetadata',
+            handleLoadedMetadata,
           );
-          audioRef.current.removeEventListener("timeupdate", handleTimeUpdate);
-          audioRef.current.removeEventListener("ended", handleEnded);
+          audioRef.current.removeEventListener('timeupdate', handleTimeUpdate);
+          audioRef.current.removeEventListener('ended', handleEnded);
           audioRef.current.pause();
           audioRef.current = null;
         }
@@ -88,9 +88,7 @@ const AudioPlayer = () => {
 
   const handleNext = (): void => {
     if (currentTrack) {
-      const currentIndex = items.findIndex(
-        (item) => item.id === currentTrack.id
-      );
+      const currentIndex = items.findIndex(item => item.id === currentTrack.id);
       const nextItem = items[currentIndex + 1];
       if (nextItem) {
         setCurrentAudio(nextItem.id);
@@ -101,9 +99,7 @@ const AudioPlayer = () => {
 
   const handlePrevious = (): void => {
     if (currentTrack) {
-      const currentIndex = items.findIndex(
-        (item) => item.id === currentTrack.id
-      );
+      const currentIndex = items.findIndex(item => item.id === currentTrack.id);
       const prevItem = items[currentIndex - 1];
       if (prevItem) {
         setCurrentAudio(prevItem.id);
@@ -116,7 +112,7 @@ const AudioPlayer = () => {
     if (audioRef.current && value[0] !== undefined) {
       const newTime = (value[0] / 100) * duration;
       audioRef.current.currentTime = newTime;
-      setState((prev) => ({
+      setState(prev => ({
         ...prev,
         currentTime: newTime,
       }));
@@ -126,7 +122,7 @@ const AudioPlayer = () => {
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = Math.floor(seconds % 60);
-    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
   const getCurrentProgress = (): number => {
@@ -138,11 +134,11 @@ const AudioPlayer = () => {
   const nextDisabled: boolean =
     isLoading ||
     !currentTrack ||
-    items.findIndex((item) => item.id === currentTrack.id) === items.length - 1;
+    items.findIndex(item => item.id === currentTrack.id) === items.length - 1;
   const prevDisabled: boolean =
     isLoading ||
     !currentTrack ||
-    items.findIndex((item) => item.id === currentTrack.id) === 0;
+    items.findIndex(item => item.id === currentTrack.id) === 0;
 
   if (!currentTrack?.path) return null;
 
@@ -152,8 +148,8 @@ const AudioPlayer = () => {
         <DrawerTrigger asChild>
           <div className="flex group pl-4 py-4 hover:opacity-75 hover:bg-neutral-50 hover:cursor-pointer transition-colors duration-150 shrink items-center gap-4">
             <img
-              src="/public/audio_placeholder_img.jpeg"
-              alt={currentTrack.name || ""}
+              src="/audio_placeholder_img.jpeg"
+              alt={currentTrack.name || ''}
               className="md:h-16 h-10 aspect-square rounded-md object-cover"
             />
             <div className="md:grid md:grid-rows-2 flex items-center my-auto gap-1">
@@ -197,8 +193,8 @@ const AudioPlayer = () => {
       <DrawerContent className="min-h-[90dvh]">
         <div className="p-8 grid grid-rows-2 grow grid-cols-1 md:grid-cols-2 md:grid-rows-1 gap-4">
           <img
-            src="/public/audio_placeholder_img.jpeg"
-            alt={currentTrack.name || ""}
+            src="/audio_placeholder_img.jpeg"
+            alt={currentTrack.name || ''}
             className="h-[40dvh] md:h-[80dvh] max-w-full mx-auto aspect-square rounded-md object-cover"
           />
           <div className="flex md:gap-4 justify-end md:justify-center flex-col">

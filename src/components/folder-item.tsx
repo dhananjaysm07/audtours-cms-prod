@@ -34,14 +34,24 @@ import {
   EyeOff,
   EyeIcon,
   Map,
+  Upload,
+  FileText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ImageViewer from './image-viewer';
 import EditFileDialog from './edit-file-dialog';
 import EditFolderDialog from './edit-folder-dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface FolderItemProps {
   item: ContentItem;
+}
+
+interface TemplateData {
+  image: File | null;
+  content: string;
+  templateName: string;
 }
 
 const getFolderItemIcon = (item: ContentItem) => {
@@ -143,17 +153,24 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPropertiesDialogOpen, setIsPropertiesDialogOpen] = useState(false);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [newItemName, setNewItemName] = useState(item.name);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isEditFolderDialogOpen, setIsEditFolderDialogOpen] = useState(false);
-  console.log('Folder item data', item);
+  const [templatePreview, setTemplatePreview] = useState<string | null>(null);
+  const [templateData, setTemplateData] = useState<TemplateData>({
+    image: null,
+    content: '',
+    templateName: '',
+  });
+
   const {
     navigateTo,
     selectedItems,
     toggleItemSelection,
     renameNode,
     deleteNode,
-    playAudio, // Add this
+    playAudio,
     setNodeActivation,
   } = useContentStore();
 
@@ -171,6 +188,7 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
     if (item.type === 'file' && item.mimeType?.startsWith('audio'))
       playAudio(item.id);
   };
+
   const handleOpen = handleDoubleClick;
   const isItemSelected = selectedItems.includes(item.id);
 
@@ -203,13 +221,62 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
   const handleToggleActivation = async () => {
     try {
       await setNodeActivation(item.id, !item.isActive);
-      // toast.success(
-      //   `Item ${item.isActive ? "hidden" : "unhidden"} successfully`
-      // );
     } catch (error) {
       toast.error('Failed to update item visibility');
     }
   };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setTemplateData({ ...templateData, image: file });
+
+      // Set preview for the image
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTemplatePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setTemplateData({ ...templateData, content: e.target.value });
+  };
+
+  const handleTemplateNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTemplateData({ ...templateData, templateName: e.target.value });
+  };
+
+  const handleTemplateSubmit = async () => {
+    try {
+      // Here you would typically call an API to save the template
+      // For now, we'll just log the data and show a success message
+      console.log('Template data to be submitted:', {
+        nodeId: item.id,
+        templateName: templateData.templateName,
+        content: templateData.content,
+        image: templateData.image,
+      });
+
+      // Reset form and close dialog
+      setTemplateData({ image: null, content: '', templateName: '' });
+      setTemplatePreview(null);
+      setIsTemplateDialogOpen(false);
+
+      toast.success('Template added successfully');
+    } catch (error) {
+      console.error('Template submission error:', error);
+      toast.error('Failed to add template');
+    }
+  };
+
+  // Check if the item is eligible for template addition
+  const canAddTemplate =
+    item.type === FOLDER_ITEM_TYPE.FOLDER &&
+    (item.nodeType === NODE_TYPES.MAP ||
+      item.nodeType === NODE_TYPES.SPOT ||
+      item.nodeType === NODE_TYPES.STOP);
 
   return (
     <>
@@ -231,13 +298,6 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
                 {item.language && ` (${item.language})`}
               </span>
             </div>
-            {/* {item.type === 'repository' &&
-              item.repoType === 'audio' &&
-              item.language && (
-                <Badge variant="outline" className="mt-1 text-xs">
-                  {item.language}
-                </Badge>
-              )} */}
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent className="min-w-40">
@@ -264,6 +324,22 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
               />
             )}
           </ContextMenuItem>
+
+          {/* Add Template option - only for map/spot/stop folder types */}
+          {canAddTemplate && (
+            <ContextMenuItem
+              className="flex gap-2 justify-between"
+              onSelect={() => setIsTemplateDialogOpen(true)}
+            >
+              <span>Add Template</span>
+              <FileText
+                size={16}
+                className="text-neutral-600"
+                strokeWidth={1.5}
+              />
+            </ContextMenuItem>
+          )}
+
           <ContextMenuItem
             className="flex gap-2 justify-between"
             onSelect={() => setIsRenameDialogOpen(true)}
@@ -372,6 +448,105 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
           <DialogFooter>
             <Button variant="ghost" className="w-full" onClick={handleRename}>
               Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Template Dialog */}
+      <Dialog
+        open={isTemplateDialogOpen}
+        onOpenChange={setIsTemplateDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Add Template</DialogTitle>
+            <DialogDescription>
+              Add a template to {item.nodeType?.toLowerCase()} "{item.name}".
+              The template can include both an image and text content.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-2">
+            <div className="space-y-2">
+              <Label htmlFor="templateName">Template Name</Label>
+              <Input
+                id="templateName"
+                value={templateData.templateName}
+                onChange={handleTemplateNameChange}
+                placeholder="Enter template name"
+              />
+            </div>
+
+            <Tabs defaultValue="content" className="w-full">
+              <TabsList className="w-full">
+                <TabsTrigger value="content" className="flex-1">
+                  Content
+                </TabsTrigger>
+                <TabsTrigger value="image" className="flex-1">
+                  Image
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="content" className="space-y-2">
+                <Label htmlFor="content">Template Content (Markdown)</Label>
+                <Textarea
+                  id="content"
+                  value={templateData.content}
+                  onChange={handleContentChange}
+                  placeholder="Enter your markdown content here..."
+                  className="min-h-[200px] max-h-[200px] resize-none"
+                />
+              </TabsContent>
+
+              <TabsContent value="image" className="space-y-2">
+                <Label htmlFor="image">Template Image</Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center">
+                  {templatePreview ? (
+                    <div className="relative">
+                      <img
+                        src={templatePreview}
+                        alt="Template preview"
+                        className="max-h-[180px] mx-auto"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute top-0 right-0 bg-white rounded-full p-1"
+                        onClick={() => {
+                          setTemplatePreview(null);
+                          setTemplateData({ ...templateData, image: null });
+                        }}
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="py-4">
+                      <Upload className="mx-auto h-10 w-10 text-gray-400" />
+                      <p className="mt-2 text-sm text-gray-500">
+                        Click to upload or drag and drop
+                      </p>
+                      <Input
+                        id="image"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={handleTemplateSubmit}
+              disabled={!templateData.templateName}
+            >
+              Add Template
             </Button>
           </DialogFooter>
         </DialogContent>
