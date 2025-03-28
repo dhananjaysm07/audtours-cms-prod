@@ -30,7 +30,7 @@ import {
 import { Button } from '@/components/ui/button';
 import CreateCodeDialog from '@/components/create-code-dialog';
 import UpdateCodeDialog from '@/components/update-code-dialog';
-import { subscriptionApi } from '@/lib/api';
+import { subscriptionApi, templateApi } from '@/lib/api';
 import type { CodeResponse, PaginationMeta, User } from '@/types';
 import LoadingSpinner from '@/components/spinner';
 import {
@@ -42,7 +42,22 @@ import {
   UpdateCodeSchema,
 } from '@/schemas/update-code-schema';
 import { userApi } from '@/lib/api/user';
-import { Eye, EyeOff } from 'lucide-react';
+import { Download, Eye, EyeOff } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+
+// Define API error type
+interface ApiErrorDetail {
+  status: number;
+  message: string;
+  data?: {
+    errors?: Record<string, string[]>;
+  };
+}
 
 const DEFAULT_PAGINATION: PaginationMeta = {
   total: 0,
@@ -53,7 +68,6 @@ const DEFAULT_PAGINATION: PaginationMeta = {
 
 export default function Codes() {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [, setMaxHeight] = useState<string>('0');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const [selectedCodeId, setSelectedCodeId] = useState<number | null>(null);
@@ -66,10 +80,15 @@ export default function Codes() {
   const [usersPagination, setUsersPagination] =
     useState<PaginationMeta>(DEFAULT_PAGINATION);
   const [userSearch, setUserSearch] = useState('');
-  // const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  // const [userCodes, setUserCodes] = useState<CodeResponse[]>([]);
   const [showingUserCodes, setShowingUserCodes] = useState(false);
   const [visibleOtps, setVisibleOtps] = useState<Record<string, boolean>>({});
+
+  // State for template status checking and PDF loading
+  const [codeTemplateStatus, setCodeTemplateStatus] = useState<
+    Record<number, boolean>
+  >({});
+  const [isPdfLoading, setIsPdfLoading] = useState(false);
+  const [pdfLoadingId, setPdfLoadingId] = useState<number | null>(null);
 
   const [codes, setCodes] = useState<CodeResponse[]>([]);
   const [pagination, setPagination] =
@@ -94,6 +113,47 @@ export default function Codes() {
       expiryHours: 0,
     },
   });
+
+  // Check if a code has all required templates
+  const checkCodeTemplates = useCallback(
+    async (codeId: number): Promise<boolean> => {
+      // Return cached result if available
+      if (codeTemplateStatus[codeId] !== undefined) {
+        return codeTemplateStatus[codeId];
+      }
+
+      try {
+        const response = await templateApi.checkCodeTemplates(codeId);
+
+        if (response.status === 'success') {
+          // Update cache
+          setCodeTemplateStatus(prev => ({
+            ...prev,
+            [codeId]: response.data.complete,
+          }));
+
+          return response.data.complete;
+        }
+
+        return false;
+      } catch (error) {
+        console.error(`Error checking templates for code ${codeId}:`, error);
+        return false;
+      }
+    },
+    [codeTemplateStatus],
+  );
+
+  // Check templates for all codes when they load
+  useEffect(() => {
+    if (codes.length > 0) {
+      codes.forEach(code => {
+        if (code.isActive) {
+          checkCodeTemplates(code.codeId);
+        }
+      });
+    }
+  }, [checkCodeTemplates, codes]);
 
   const loadCodes = useCallback(
     async (page?: number, limit?: number) => {
@@ -215,26 +275,6 @@ export default function Codes() {
     [],
   );
 
-  // // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // const handleGetUserCodes = useCallback(async (userId: number) => {
-  //   try {
-  //     setIsLoading(true);
-  //     const response = await userApi.getUserCodes(userId);
-  //     if (response.status === 'success') {
-  //       setUserCodes(response.data);
-  //       setSelectedUserId(userId);
-  //       setShowingUserCodes(true);
-  //     } else {
-  //       toast.error(response.message || 'Failed to load user codes');
-  //     }
-  //   } catch (error) {
-  //     toast.error('Failed to load user codes');
-  //     console.error('Failed to load user codes:', error);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // }, []);
-
   useEffect(() => {
     if (mounted) {
       loadUsers();
@@ -260,6 +300,149 @@ export default function Codes() {
     [loadCodes],
   );
 
+  // Updated function to handle downloading tickets - uses only codeId
+  const handleDownloadTicket = async (codeId: number): Promise<void> => {
+    try {
+      // First check if all templates exist
+      const templateCheckResponse = await templateApi.checkCodeTemplates(
+        codeId,
+      );
+
+      if (
+        templateCheckResponse.status !== 'success' ||
+        !templateCheckResponse.data.complete
+      ) {
+        if (
+          templateCheckResponse.data.missingNodes &&
+          templateCheckResponse.data.missingNodes.length > 0
+        ) {
+          toast.error(
+            `Cannot generate PDF: Missing templates for nodes: ${templateCheckResponse.data.missingNodes.join(
+              ', ',
+            )}`,
+          );
+        } else {
+          toast.error('Cannot generate PDF: Some nodes are missing templates');
+        }
+        return;
+      }
+
+      // Proceed with download if all templates exist
+      setIsPdfLoading(true);
+      setPdfLoadingId(codeId);
+      toast.info('Generating ticket PDF...');
+
+      try {
+        // Try to get PDF as base64 first - only passing codeId
+        const response = await templateApi.generatePdfAsBase64(codeId);
+
+        if (response.status === 'success' && response.data) {
+          // Download the PDF using base64 data
+          templateApi.downloadBase64Pdf(
+            response.data.base64Pdf,
+            response.data.filename,
+          );
+          toast.success('Ticket downloaded successfully');
+        } else {
+          throw new Error(
+            response.message || 'Failed to generate PDF as base64',
+          );
+        }
+      } catch (error) {
+        // Try to extract error details
+        const apiError = error as ApiErrorDetail;
+
+        // Check if this is a validation error (missing templates)
+        if (apiError.status === 400 && apiError.data?.errors?.template) {
+          toast.error(apiError.data.errors.template[0]);
+          return;
+        }
+
+        console.error(
+          'Base64 generation failed, trying direct download:',
+          error,
+        );
+
+        try {
+          // Fallback to direct download - only passing codeId
+          const response = await templateApi.generatePdfForDownload(codeId);
+
+          // Process as blob and download
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `ticket-${codeId}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+
+          // Clean up
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+
+          toast.success('Ticket downloaded successfully');
+        } catch (downloadError) {
+          const apiDownloadError = downloadError as ApiErrorDetail;
+
+          if (
+            apiDownloadError.status === 400 &&
+            apiDownloadError.data?.errors?.template
+          ) {
+            toast.error(apiDownloadError.data.errors.template[0]);
+          } else {
+            toast.error('Failed to download ticket. Please try again.');
+          }
+          console.error('Error in direct download:', downloadError);
+        }
+      }
+    } catch (error) {
+      console.error('Error downloading ticket:', error);
+      toast.error('Failed to download ticket. Please try again.');
+    } finally {
+      setIsPdfLoading(false);
+      setPdfLoadingId(null);
+    }
+  };
+
+  // DownloadButton component with tooltips
+  const DownloadButton: React.FC<{ code: CodeResponse }> = ({ code }) => {
+    const hasTemplates = codeTemplateStatus[code.codeId] === true;
+
+    if (!code.isActive || !code.nodes?.length) {
+      return <span className="text-xs text-gray-400">Not available</span>;
+    }
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 py-1 px-2 font-semibold flex items-center gap-1"
+              onClick={() => handleDownloadTicket(code.codeId)} // Only pass codeId
+              disabled={
+                (isPdfLoading && pdfLoadingId === code.codeId) || !hasTemplates
+              }
+            >
+              {isPdfLoading && pdfLoadingId === code.codeId ? (
+                <LoadingSpinner size="small" />
+              ) : (
+                <Download size={14} />
+              )}
+              <span>Ticket</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {!hasTemplates
+              ? 'All nodes must have templates to generate a PDF ticket'
+              : 'Download ticket'}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
   useEffect(() => {
     if (mounted) loadCodes();
   }, [loadCodes, mounted]);
@@ -268,32 +451,6 @@ export default function Codes() {
     setMounted(true);
     return () => setMounted(false);
   }, []);
-
-  useEffect(() => {
-    const calculateHeight = () => {
-      if (!containerRef.current) return;
-
-      const parent = containerRef.current.parentElement;
-      if (!parent) return;
-
-      const parentHeight = parent.offsetHeight;
-      const siblingHeight = Array.from(parent.children)
-        .filter(child => child !== containerRef.current)
-        .reduce(
-          (total, child) => total + (child as HTMLElement).offsetHeight,
-          0,
-        );
-
-      const availableHeight = parentHeight - siblingHeight - 32;
-      setMaxHeight(`${availableHeight}px`);
-    };
-
-    if (mounted) {
-      calculateHeight();
-      window.addEventListener('resize', calculateHeight);
-      return () => window.removeEventListener('resize', calculateHeight);
-    }
-  }, [mounted]);
 
   const filteredCodes = useMemo(() => {
     return codes.filter(code => {
@@ -318,7 +475,7 @@ export default function Codes() {
         console.error('Failed to create code:', error);
       }
     },
-    [loadCodes, setCreateDialogOpen],
+    [loadCodes],
   );
 
   const handleUpdateCode = useCallback(
@@ -489,6 +646,7 @@ export default function Codes() {
                         <TableHead>Status</TableHead>
                         <TableHead>Deactivation</TableHead>
                         <TableHead>Extend</TableHead>
+                        <TableHead>Ticket</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -549,6 +707,9 @@ export default function Codes() {
                               Extend
                             </Button>
                           </TableCell>
+                          <TableCell>
+                            <DownloadButton code={code} />
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -594,9 +755,6 @@ export default function Codes() {
                     >
                       Back to Users
                     </Button>
-                    {/* <h3 className="text-lg font-semibold mb-4">
-                      Codes for User #{selectedUserId}
-                    </h3> */}
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -607,43 +765,6 @@ export default function Codes() {
                           <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
-                      {/* <TableBody>
-                        {userCodes.map((code) => (
-                          <TableRow key={code.codeId}>
-                            <TableCell>{code.code}</TableCell>
-                            <TableCell>
-                              <div className="flex flex-wrap gap-1">
-                                {code.nodes?.map((node) => (
-                                  <Badge
-                                    key={node.nodeId}
-                                    variant="secondary"
-                                    className="text-xs"
-                                  >
-                                    {node.path}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {new Date(code.validTo).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell>
-                              {code.usedCount}/{code.maxUsers}
-                            </TableCell>
-                            <TableCell>
-                              <span
-                                className={`inline-flex items-center rounded-full px-2 py-1 text-xs ${
-                                  code.isActive
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-red-100 text-red-700'
-                                }`}
-                              >
-                                {code.isActive ? 'active' : 'expired'}
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody> */}
                     </Table>
                   </div>
                 ) : (
@@ -656,7 +777,6 @@ export default function Codes() {
                         <TableHead>Role</TableHead>
                         <TableHead>OTP</TableHead>
                         <TableHead>Reset Password OTP</TableHead>
-                        {/* <TableHead>Actions</TableHead> */}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -710,15 +830,6 @@ export default function Codes() {
                               </Button>
                             </div>
                           </TableCell>
-                          {/* <TableCell>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => handleGetUserCodes(user.id)}
-                            >
-                              View Codes
-                            </Button>
-                          </TableCell> */}
                         </TableRow>
                       ))}
                     </TableBody>

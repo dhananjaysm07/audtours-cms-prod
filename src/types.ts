@@ -302,4 +302,13 @@ export type PaginationMeta = {
   totalPages: number;
 };
 
+export interface Template {
+  id: number;
+  nodeId: number;
+  content: string | null;
+  imagePath: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type GetCodesResponse = CodeResponse[];
