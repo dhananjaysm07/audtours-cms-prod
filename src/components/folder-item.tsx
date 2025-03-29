@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState } from 'react';
 import { useContentStore } from '@/store/useContentStore';
 import { ContentItem, FOLDER_ITEM_TYPE, NODE_TYPES } from '@/types';
@@ -34,24 +35,16 @@ import {
   EyeOff,
   EyeIcon,
   Map,
-  Upload,
   FileText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ImageViewer from './image-viewer';
 import EditFileDialog from './edit-file-dialog';
 import EditFolderDialog from './edit-folder-dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import TemplateDialog from './template-dialog';
 
 interface FolderItemProps {
   item: ContentItem;
-}
-
-interface TemplateData {
-  image: File | null;
-  content: string;
-  templateName: string;
 }
 
 const getFolderItemIcon = (item: ContentItem) => {
@@ -157,12 +150,6 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
   const [newItemName, setNewItemName] = useState(item.name);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isEditFolderDialogOpen, setIsEditFolderDialogOpen] = useState(false);
-  const [templatePreview, setTemplatePreview] = useState<string | null>(null);
-  const [templateData, setTemplateData] = useState<TemplateData>({
-    image: null,
-    content: '',
-    templateName: '',
-  });
 
   const {
     navigateTo,
@@ -223,51 +210,6 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
       await setNodeActivation(item.id, !item.isActive);
     } catch (error) {
       toast.error('Failed to update item visibility');
-    }
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setTemplateData({ ...templateData, image: file });
-
-      // Set preview for the image
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setTemplatePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setTemplateData({ ...templateData, content: e.target.value });
-  };
-
-  const handleTemplateNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTemplateData({ ...templateData, templateName: e.target.value });
-  };
-
-  const handleTemplateSubmit = async () => {
-    try {
-      // Here you would typically call an API to save the template
-      // For now, we'll just log the data and show a success message
-      console.log('Template data to be submitted:', {
-        nodeId: item.id,
-        templateName: templateData.templateName,
-        content: templateData.content,
-        image: templateData.image,
-      });
-
-      // Reset form and close dialog
-      setTemplateData({ image: null, content: '', templateName: '' });
-      setTemplatePreview(null);
-      setIsTemplateDialogOpen(false);
-
-      toast.success('Template added successfully');
-    } catch (error) {
-      console.error('Template submission error:', error);
-      toast.error('Failed to add template');
     }
   };
 
@@ -453,104 +395,12 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
         </DialogContent>
       </Dialog>
 
-      {/* Template Dialog */}
-      <Dialog
-        open={isTemplateDialogOpen}
+      {/* Template Dialog - using the separate component */}
+      <TemplateDialog
+        isOpen={isTemplateDialogOpen}
         onOpenChange={setIsTemplateDialogOpen}
-      >
-        <DialogContent className="sm:max-w-[550px]">
-          <DialogHeader>
-            <DialogTitle>Add Template</DialogTitle>
-            <DialogDescription>
-              Add a template to {item.nodeType?.toLowerCase()} "{item.name}".
-              The template can include both an image and text content.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-2">
-            <div className="space-y-2">
-              <Label htmlFor="templateName">Template Name</Label>
-              <Input
-                id="templateName"
-                value={templateData.templateName}
-                onChange={handleTemplateNameChange}
-                placeholder="Enter template name"
-              />
-            </div>
-
-            <Tabs defaultValue="content" className="w-full">
-              <TabsList className="w-full">
-                <TabsTrigger value="content" className="flex-1">
-                  Content
-                </TabsTrigger>
-                <TabsTrigger value="image" className="flex-1">
-                  Image
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="content" className="space-y-2">
-                <Label htmlFor="content">Template Content (Markdown)</Label>
-                <Textarea
-                  id="content"
-                  value={templateData.content}
-                  onChange={handleContentChange}
-                  placeholder="Enter your markdown content here..."
-                  className="min-h-[200px] max-h-[200px] resize-none"
-                />
-              </TabsContent>
-
-              <TabsContent value="image" className="space-y-2">
-                <Label htmlFor="image">Template Image</Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center">
-                  {templatePreview ? (
-                    <div className="relative">
-                      <img
-                        src={templatePreview}
-                        alt="Template preview"
-                        className="max-h-[180px] mx-auto"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="absolute top-0 right-0 bg-white rounded-full p-1"
-                        onClick={() => {
-                          setTemplatePreview(null);
-                          setTemplateData({ ...templateData, image: null });
-                        }}
-                      >
-                        ✕
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="py-4">
-                      <Upload className="mx-auto h-10 w-10 text-gray-400" />
-                      <p className="mt-2 text-sm text-gray-500">
-                        Click to upload or drag and drop
-                      </p>
-                      <Input
-                        id="image"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      />
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-
-          <DialogFooter>
-            <Button
-              onClick={handleTemplateSubmit}
-              disabled={!templateData.templateName}
-            >
-              Add Template
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        item={item}
+      />
 
       {/* Delete Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
