@@ -11,11 +11,22 @@ interface StorefrontState {
   error: string | null;
   error_status: number | null;
   display_toast: boolean;
+  searchResults: {
+    stores: Store[];
+    total: number;
+  };
+  searchQuery: string;
+  currentPage: number;
+  totalPages: number;
+
   fetchStores: () => Promise<void>;
   fetchStore: (id: number) => Promise<void>;
   createStore: (data: CreateStorePayload) => Promise<void>;
   updateStore: (id: number, data: Partial<CreateStorePayload>) => Promise<void>;
   toggleStoreActivation: (id: number, isActive: boolean) => Promise<void>;
+  searchStores: (query: string, page?: number, limit?: number) => Promise<void>;
+  setSearchQuery: (query: string) => void;
+  setCurrentPage: (page: number) => void;
 }
 
 export const useStorefrontStore = create<StorefrontState>(set => ({
@@ -25,6 +36,13 @@ export const useStorefrontStore = create<StorefrontState>(set => ({
   error: null,
   error_status: null,
   display_toast: false,
+  searchResults: {
+    stores: [],
+    total: 0,
+  },
+  searchQuery: '',
+  currentPage: 1,
+  totalPages: 1,
 
   fetchStores: async () => {
     set({ isLoading: true });
@@ -142,5 +160,43 @@ export const useStorefrontStore = create<StorefrontState>(set => ({
       });
       toast.error(error_message);
     }
+  },
+
+  searchStores: async (query: string, page = 1, limit = 10) => {
+    set({ isLoading: true });
+    try {
+      const response = await storeApi.searchStores({ query, page, limit });
+      const data = response.data;
+      set({
+        searchResults: {
+          stores: data.stores,
+          total: data.total,
+        },
+        currentPage: page,
+        totalPages: Math.ceil(data.total / limit),
+        isLoading: false,
+        error: null,
+        error_status: null,
+      });
+    } catch (error) {
+      const error_message =
+        error instanceof Error ? error.message : 'Failed to search stores';
+      set({
+        error: error_message,
+        error_status: error instanceof Response ? error.status : 500,
+        isLoading: false,
+      });
+      toast.error(error_message);
+    }
+  },
+
+  setSearchQuery: (query: string) => {
+    set({ searchQuery: query });
+  },
+
+  setCurrentPage: (page: number) => {
+    set({ currentPage: page });
+    const state = useStorefrontStore.getState();
+    state.searchStores(state.searchQuery, page);
   },
 }));
