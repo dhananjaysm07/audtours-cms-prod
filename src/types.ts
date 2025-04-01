@@ -276,6 +276,8 @@ export interface Store {
   banner: string;
   heading: string;
   description: string;
+  country: string; // New field
+  continent: string; // New field
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

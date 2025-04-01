@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -18,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, Globe, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Command,
@@ -38,12 +39,15 @@ import { useState, useCallback, useEffect } from 'react';
 import { Node } from '@/types';
 import { contentApi } from '@/lib/api';
 import { debounce } from 'lodash';
+import { countries, getContinentByCountry } from '@/lib/country-data';
 
 // Separate schemas for create and edit modes
 const createStoreSchema = z.object({
   bokunId: z.string().min(1, 'Bokun ID is required'),
   heading: z.string().min(1, 'Heading is required'),
   description: z.string().min(1, 'Description is required'),
+  country: z.string().min(1, 'Country is required'),
+  continent: z.string().min(1, 'Continent is required'),
   nodeIds: z.array(z.number()).min(1, 'At least one node must be selected'),
   file: z.any().optional(),
 });
@@ -52,6 +56,8 @@ const editStoreSchema = z.object({
   bokunId: z.string().min(1, 'Bokun ID is required'),
   heading: z.string().min(1, 'Heading is required'),
   description: z.string().min(1, 'Description is required'),
+  country: z.string().min(1, 'Country is required'),
+  continent: z.string().min(1, 'Continent is required'),
   file: z.any().optional(),
 });
 
@@ -82,6 +88,10 @@ export function StoreDialog({
     new Map(),
   );
 
+  const [showCountrySearch, setShowCountrySearch] = useState(false);
+  const [countrySearchTerm, setCountrySearchTerm] = useState('');
+  const [filteredCountries, setFilteredCountries] = useState(countries);
+
   // Use different form types based on mode
   const form = useForm<CreateStoreType | EditStoreType>({
     resolver: zodResolver(
@@ -91,17 +101,78 @@ export function StoreDialog({
       bokunId: '',
       heading: '',
       description: '',
+      country: '',
+      continent: '',
       ...(mode === 'create' ? { nodeIds: [] } : {}),
     },
   });
 
+  // Important: Reset the form when the dialog opens or initialData changes
   useEffect(() => {
     if (initialData) {
-      form.reset(initialData);
+      // For create mode, handle nodeIds and populate selectedNodesInfo
+      if (
+        mode === 'create' &&
+        'nodeIds' in initialData &&
+        initialData.nodeIds
+      ) {
+        const nodeMap = new Map<number, Node>();
+        (initialData.nodeIds as number[]).forEach(id => {
+          nodeMap.set(id, { id, path: `Node ${id}` } as Node);
+        });
+        setSelectedNodesInfo(nodeMap);
+      }
+
+      // Reset the form with initialData
+      form.reset({
+        bokunId: initialData.bokunId || '',
+        heading: initialData.heading || '',
+        description: initialData.description || '',
+        country: initialData.country || '',
+        continent: initialData.continent || '',
+        ...(mode === 'create' && 'nodeIds' in initialData
+          ? { nodeIds: initialData.nodeIds || [] }
+          : {}),
+      });
     } else {
-      form.reset({ bokunId: '', heading: '', description: '', nodeIds: [] });
+      // Reset to defaults
+      form.reset({
+        bokunId: '',
+        heading: '',
+        description: '',
+        country: '',
+        continent: '',
+        ...(mode === 'create' ? { nodeIds: [] } : {}),
+      });
+
+      if (mode === 'create') {
+        setSelectedNodesInfo(new Map());
+      }
     }
-  }, [initialData, form]);
+  }, [initialData, form, mode, open]);
+
+  // Filter countries based on search term
+  useEffect(() => {
+    if (countrySearchTerm) {
+      const filtered = countries.filter(country =>
+        country.name.toLowerCase().includes(countrySearchTerm.toLowerCase()),
+      );
+      setFilteredCountries(filtered);
+    } else {
+      setFilteredCountries(countries);
+    }
+  }, [countrySearchTerm]);
+
+  // Set continent automatically when country changes
+  useEffect(() => {
+    const countryValue = form.watch('country');
+    if (countryValue) {
+      const continent = getContinentByCountry(countryValue);
+      if (continent) {
+        form.setValue('continent', continent);
+      }
+    }
+  }, [form.watch('country')]);
 
   const debouncedSearch = useCallback(
     debounce(async (term: string) => {
@@ -133,20 +204,32 @@ export function StoreDialog({
 
   const handleNodeSelect = (node: Node) => {
     if (mode === 'create') {
-      const currentNodeIds = (form.getValues() as CreateStoreType).nodeIds;
-      form.setValue('nodeIds', [...currentNodeIds, node.id] as any);
+      const createForm = form as ReturnType<typeof useForm<CreateStoreType>>;
+      const currentNodeIds = createForm.getValues().nodeIds || [];
+      createForm.setValue('nodeIds', [...currentNodeIds, node.id]);
       setSelectedNodesInfo(new Map(selectedNodesInfo.set(node.id, node)));
     }
     setShowNodeSearch(false);
     setSearchTerm('');
   };
 
+  const handleCountrySelect = (countryName: string) => {
+    form.setValue('country', countryName);
+    const continent = getContinentByCountry(countryName);
+    if (continent) {
+      form.setValue('continent', continent);
+    }
+    setShowCountrySearch(false);
+    setCountrySearchTerm('');
+  };
+
   const handleRemoveNode = (nodeId: number) => {
     if (mode === 'create') {
-      const currentNodeIds = (form.getValues() as CreateStoreType).nodeIds;
-      form.setValue(
+      const createForm = form as ReturnType<typeof useForm<CreateStoreType>>;
+      const currentNodeIds = createForm.getValues().nodeIds || [];
+      createForm.setValue(
         'nodeIds',
-        currentNodeIds.filter(id => id !== nodeId) as any,
+        currentNodeIds.filter(id => id !== nodeId),
       );
       const updatedNodesInfo = new Map(selectedNodesInfo);
       updatedNodesInfo.delete(nodeId);
@@ -155,7 +238,8 @@ export function StoreDialog({
   };
 
   const selectedNodeIds =
-    mode === 'create' ? (form.watch('nodeIds') as number[]) : [];
+    mode === 'create' ? (form.watch('nodeIds') as number[]) || [] : [];
+
   const filteredNodes = searchResults.filter(
     node => !selectedNodeIds.includes(node.id),
   );
@@ -167,37 +251,45 @@ export function StoreDialog({
           <DialogTitle>
             {mode === 'create' ? 'Create New Store' : 'Edit Store'}
           </DialogTitle>
+          <DialogDescription>
+            {mode === 'create'
+              ? 'Fill in the details to create a new store.'
+              : 'Edit the details of the existing store.'}
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="bokunId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Bokun ID</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Enter Bokun ID" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Heading and Bokun ID side by side */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="heading"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Heading</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter heading" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="heading"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Heading</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Enter heading" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="bokunId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bokun ID</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter Bokun ID" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
@@ -213,6 +305,80 @@ export function StoreDialog({
               )}
             />
 
+            {/* Country and Continent side by side */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Country Field */}
+              <FormField
+                control={form.control}
+                name="country"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Country</FormLabel>
+                    <Popover
+                      open={showCountrySearch}
+                      onOpenChange={setShowCountrySearch}
+                    >
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <div className="flex items-center justify-between rounded-md border border-input px-3 py-2 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                            <span>{field.value || 'Select a country'}</span>
+                            <MapPin className="h-4 w-4 opacity-50" />
+                          </div>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-0">
+                        <Command>
+                          <CommandInput
+                            placeholder="Search countries..."
+                            value={countrySearchTerm}
+                            onValueChange={setCountrySearchTerm}
+                          />
+                          <ScrollArea className="h-[300px]">
+                            <CommandList>
+                              <CommandEmpty>No countries found</CommandEmpty>
+                              <CommandGroup>
+                                {filteredCountries.map(country => (
+                                  <CommandItem
+                                    key={country.code}
+                                    onSelect={() =>
+                                      handleCountrySelect(country.name)
+                                    }
+                                  >
+                                    {country.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </ScrollArea>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Continent Field (Read-only) */}
+              <FormField
+                control={form.control}
+                name="continent"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Continent</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center justify-between rounded-md border border-input bg-muted px-3 py-2 text-sm">
+                        <span>
+                          {field.value || 'Auto-selected based on country'}
+                        </span>
+                        <Globe className="h-4 w-4 opacity-50" />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             {mode === 'create' && (
               <FormField
                 control={form.control}
@@ -221,7 +387,7 @@ export function StoreDialog({
                   <FormItem>
                     <FormLabel>Nodes</FormLabel>
                     <div className="flex flex-wrap gap-2">
-                      {field?.value?.map(nodeId => {
+                      {field.value?.map(nodeId => {
                         const nodeInfo = selectedNodesInfo.get(nodeId);
                         return (
                           <Badge
@@ -297,7 +463,12 @@ export function StoreDialog({
                     <Input
                       type="file"
                       accept="image/*"
-                      onChange={e => field.onChange(e.target.files?.[0])}
+                      onChange={e => {
+                        const files = e.target.files;
+                        if (files && files.length > 0) {
+                          field.onChange(files[0]);
+                        }
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -306,7 +477,11 @@ export function StoreDialog({
             />
 
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {mode === 'create' ? 'Create Store' : 'Update Store'}
+              {isLoading
+                ? 'Processing...'
+                : mode === 'create'
+                ? 'Create Store'
+                : 'Update Store'}
             </Button>
           </form>
         </Form>
