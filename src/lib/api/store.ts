@@ -6,8 +6,9 @@ export interface CreateStorePayload {
   file: File;
   heading: string;
   description: string;
-  country: string; // New field
-  continent: string; // New field
+  country: string;
+  continent: string;
+  tag?: string; // New field
   nodeIds: number[];
 }
 
@@ -16,8 +17,9 @@ export interface UpdateStorePayload {
   file?: File;
   heading?: string;
   description?: string;
-  country?: string; // New field
-  continent?: string; // New field
+  country?: string;
+  continent?: string;
+  tag?: string; // New field
 }
 
 interface ToggleActivationPayload {
@@ -57,8 +59,9 @@ export default class StoreApi extends ApiClient {
     formData.append('file', data.file);
     formData.append('heading', data.heading);
     formData.append('description', data.description);
-    formData.append('country', data.country); // New field
-    formData.append('continent', data.continent); // New field
+    formData.append('country', data.country);
+    formData.append('continent', data.continent);
+    if (data.tag) formData.append('tag', data.tag); // Add tag if it exists
     formData.append('nodeIds', JSON.stringify(data.nodeIds));
 
     return this.request('/store', {
@@ -78,8 +81,9 @@ export default class StoreApi extends ApiClient {
     if (data.file) formData.append('file', data.file);
     if (data.heading) formData.append('heading', data.heading);
     if (data.description) formData.append('description', data.description);
-    if (data.country) formData.append('country', data.country); // New field
-    if (data.continent) formData.append('continent', data.continent); // New field
+    if (data.country) formData.append('country', data.country);
+    if (data.continent) formData.append('continent', data.continent);
+    if (data.tag !== undefined) formData.append('tag', data.tag); // Handle empty string case too
 
     return this.request(`/store/${id}`, {
       method: 'PATCH',

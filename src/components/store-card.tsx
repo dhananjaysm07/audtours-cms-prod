@@ -25,6 +25,16 @@ export function StoreCard({
           className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+
+        {/* Promotional Tag Badge */}
+        {store.tag && (
+          <div className="absolute top-3 left-3 z-10">
+            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/85 text-white shadow-md backdrop-blur-sm">
+              {store.tag}
+            </span>
+          </div>
+        )}
+
         <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <button
             onClick={() => onEdit(store.id)}
