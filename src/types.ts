@@ -276,12 +276,13 @@ export interface Store {
   banner: string;
   heading: string;
   description: string;
-  country: string; // New field
-  continent: string; // New field
+  country: string;
+  continent: string;
+  tag?: string; // New field - optional promotional tag
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  nodes: Node[];
+  nodes?: Node[];
 }
 
 export interface CodeResponse {

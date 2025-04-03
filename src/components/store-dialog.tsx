@@ -19,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { X, Globe, MapPin } from 'lucide-react';
+import { X, Globe, MapPin, Tag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Command,
@@ -41,6 +41,18 @@ import { contentApi } from '@/lib/api';
 import { debounce } from 'lodash';
 import { countries, getContinentByCountry } from '@/lib/country-data';
 
+// Predefined tag suggestions
+const TAG_SUGGESTIONS = [
+  'Most Popular',
+  'Likely to Sell Out',
+  'Must Try',
+  'New',
+  'Featured',
+  'Limited Time',
+  'Best Seller',
+  "Editor's Choice",
+];
+
 // Separate schemas for create and edit modes
 const createStoreSchema = z.object({
   bokunId: z.string().min(1, 'Bokun ID is required'),
@@ -48,6 +60,7 @@ const createStoreSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   country: z.string().min(1, 'Country is required'),
   continent: z.string().min(1, 'Continent is required'),
+  tag: z.string().optional(),
   nodeIds: z.array(z.number()).min(1, 'At least one node must be selected'),
   file: z.any().optional(),
 });
@@ -58,6 +71,7 @@ const editStoreSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   country: z.string().min(1, 'Country is required'),
   continent: z.string().min(1, 'Continent is required'),
+  tag: z.string().optional(),
   file: z.any().optional(),
 });
 
@@ -92,6 +106,10 @@ export function StoreDialog({
   const [countrySearchTerm, setCountrySearchTerm] = useState('');
   const [filteredCountries, setFilteredCountries] = useState(countries);
 
+  const [showTagSearch, setShowTagSearch] = useState(false);
+  const [tagSearchTerm, setTagSearchTerm] = useState('');
+  const [filteredTags, setFilteredTags] = useState(TAG_SUGGESTIONS);
+
   // Use different form types based on mode
   const form = useForm<CreateStoreType | EditStoreType>({
     resolver: zodResolver(
@@ -103,6 +121,7 @@ export function StoreDialog({
       description: '',
       country: '',
       continent: '',
+      tag: '',
       ...(mode === 'create' ? { nodeIds: [] } : {}),
     },
   });
@@ -130,6 +149,7 @@ export function StoreDialog({
         description: initialData.description || '',
         country: initialData.country || '',
         continent: initialData.continent || '',
+        tag: initialData.tag || '',
         ...(mode === 'create' && 'nodeIds' in initialData
           ? { nodeIds: initialData.nodeIds || [] }
           : {}),
@@ -142,6 +162,7 @@ export function StoreDialog({
         description: '',
         country: '',
         continent: '',
+        tag: '',
         ...(mode === 'create' ? { nodeIds: [] } : {}),
       });
 
@@ -163,16 +184,28 @@ export function StoreDialog({
     }
   }, [countrySearchTerm]);
 
-  // Set continent automatically when country changes
+  // Filter tags based on search term
   useEffect(() => {
-    const countryValue = form.watch('country');
+    if (tagSearchTerm) {
+      const filtered = TAG_SUGGESTIONS.filter(tag =>
+        tag.toLowerCase().includes(tagSearchTerm.toLowerCase()),
+      );
+      setFilteredTags(filtered);
+    } else {
+      setFilteredTags(TAG_SUGGESTIONS);
+    }
+  }, [tagSearchTerm]);
+
+  // Set continent automatically when country changes
+  const countryValue = form.watch('country');
+  useEffect(() => {
     if (countryValue) {
       const continent = getContinentByCountry(countryValue);
       if (continent) {
         form.setValue('continent', continent);
       }
     }
-  }, [form.watch('country')]);
+  }, [countryValue, form]);
 
   const debouncedSearch = useCallback(
     debounce(async (term: string) => {
@@ -221,6 +254,16 @@ export function StoreDialog({
     }
     setShowCountrySearch(false);
     setCountrySearchTerm('');
+  };
+
+  const handleTagSelect = (tag: string) => {
+    form.setValue('tag', tag);
+    setShowTagSearch(false);
+    setTagSearchTerm('');
+  };
+
+  const clearTag = () => {
+    form.setValue('tag', '');
   };
 
   const handleRemoveNode = (nodeId: number) => {
@@ -378,6 +421,77 @@ export function StoreDialog({
                 )}
               />
             </div>
+
+            {/* Promotional Tag Field */}
+            <FormField
+              control={form.control}
+              name="tag"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Promotional Tag (optional)</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <Popover
+                      open={showTagSearch}
+                      onOpenChange={setShowTagSearch}
+                    >
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <div className="flex flex-1 items-center justify-between rounded-md border border-input px-3 py-2 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                            <span>
+                              {field.value || 'Select or enter a tag'}
+                            </span>
+                            <Tag className="h-4 w-4 opacity-50" />
+                          </div>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-0">
+                        <Command>
+                          <CommandInput
+                            placeholder="Search or enter new tag..."
+                            value={tagSearchTerm}
+                            onValueChange={value => {
+                              setTagSearchTerm(value);
+                              // Allow custom tags by setting the value as the user types
+                              field.onChange(value);
+                            }}
+                          />
+                          <ScrollArea className="h-[200px]">
+                            <CommandList>
+                              <CommandEmpty>
+                                Press enter to use "{tagSearchTerm}" as a custom
+                                tag
+                              </CommandEmpty>
+                              <CommandGroup heading="Suggested Tags">
+                                {filteredTags.map(tag => (
+                                  <CommandItem
+                                    key={tag}
+                                    onSelect={() => handleTagSelect(tag)}
+                                  >
+                                    {tag}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </ScrollArea>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+
+                    {field.value && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={clearTag}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {mode === 'create' && (
               <FormField
