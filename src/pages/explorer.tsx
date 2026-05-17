@@ -87,7 +87,8 @@ import ArtistManagementDialog from '@/components/artist-management-dialog';
 import { useArtistStore } from '@/store/useArtistStore';
 import { useSearchParams } from 'react-router';
 import { CreateRepositoryDialog } from '@/components/create-repo-dialog';
-
+import { BulkImportDialog } from '@/components/bulk-import-dialog';
+import { Files } from 'lucide-react'; // add Files to lucide imports
 interface PathSegment {
   id: string;
   name: string;
@@ -649,7 +650,7 @@ const ContentExplorer = () => {
     if (!parentNodeId) initializeStore();
     else getHierarchy(Number(parentNodeId));
   }, [getHierarchy, navigateTo, parentNodeId, setIsLoading]);
-
+  const [isOpenBulkImportDialog, setIsOpenBulkImportDialog] = useState(false);
   const handleBreadcrumbClick = async (segment: PathSegment, index: number) => {
     try {
       // Navigate to the clicked segment
@@ -731,6 +732,19 @@ const ContentExplorer = () => {
             >
               <FileUp size={16} />
             </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="min-w-0"
+              onClick={() => setIsOpenBulkImportDialog(true)}
+              disabled={
+                !isFileUploadAvailable({ type: currentSegment.type }) ||
+                currentSegment.repoType !== REPOSITORY_KINDS.AUDIO
+              }
+              title="Bulk Import"
+            >
+              <Files size={16} />
+            </Button>
             <CreateFolderDialog />
             <Button
               size="sm"
@@ -771,6 +785,12 @@ const ContentExplorer = () => {
           />
         ) : (
           ''
+        )}
+        {isOpenBulkImportDialog && (
+          <BulkImportDialog
+            isOpen={isOpenBulkImportDialog}
+            setIsOpen={setIsOpenBulkImportDialog}
+          />
         )}
       </div>
     </div>

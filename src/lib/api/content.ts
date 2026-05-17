@@ -76,6 +76,12 @@ export default class ContentApi extends ApiClient {
     });
   }
 
+  async deleteFile(repoId: number, mediaId: string): Promise<void> {
+    await this.request(`/repo/${repoId}/files/${mediaId}`, {
+      method: 'DELETE',
+    });
+  }
+
   async editFile(
     repoId: number,
     fileId: string,

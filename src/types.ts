@@ -203,6 +203,7 @@ export interface ContentActions {
     type: (typeof REPOSITORY_KINDS)[keyof typeof REPOSITORY_KINDS],
     languageId?: number,
   ) => Promise<void>;
+  deleteFile: (repoId: number, mediaId: string) => Promise<void>;
 }
 
 // API interfaces
@@ -222,11 +223,10 @@ export interface User {
   role: UserRole;
 }
 
-export interface AuthResponse
-  extends ApiResponse<{
-    token: string;
-    user: User;
-  }> {
+export interface AuthResponse extends ApiResponse<{
+  token: string;
+  user: User;
+}> {
   status: 'success' | 'error';
   data: {
     token: string;

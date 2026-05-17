@@ -150,13 +150,14 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
   const [newItemName, setNewItemName] = useState(item.name);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isEditFolderDialogOpen, setIsEditFolderDialogOpen] = useState(false);
-
+  const [isDeleteFileDialogOpen, setIsDeleteFileDialogOpen] = useState(false);
   const {
     navigateTo,
     selectedItems,
     toggleItemSelection,
     renameNode,
     deleteNode,
+    deleteFile,
     playAudio,
     setNodeActivation,
   } = useContentStore();
@@ -202,6 +203,16 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
       toast.success('Item deleted successfully');
     } catch (error) {
       toast.error('Failed to delete item');
+    }
+  };
+
+  const handleDeleteFile = async () => {
+    if (!item.repoId) return;
+    try {
+      await deleteFile(item.repoId, item.id);
+      setIsDeleteFileDialogOpen(false);
+    } catch {
+      // error toast is shown by the store
     }
   };
 
@@ -251,8 +262,8 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
               {item.type === 'file' && item.mimeType?.startsWith('audio')
                 ? 'Play'
                 : item.type === 'file' && item.mimeType?.startsWith('image')
-                ? 'View'
-                : 'Open'}
+                  ? 'View'
+                  : 'Open'}
             </span>
             {item.type === 'file' && item.mimeType?.startsWith('audio') ? (
               <Play size={16} className="text-neutral-600" strokeWidth={1.5} />
@@ -266,6 +277,20 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
               />
             )}
           </ContextMenuItem>
+
+          {item.type === 'file' && (
+            <ContextMenuItem
+              className="flex gap-2 justify-between group"
+              onSelect={() => setIsDeleteFileDialogOpen(true)}
+            >
+              <span className="group-hover:text-destructive">Delete</span>
+              <Trash2
+                size={16}
+                className="group-hover:text-destructive text-neutral-600"
+                strokeWidth={1.5}
+              />
+            </ContextMenuItem>
+          )}
 
           {/* Add Template option - only for map/spot/stop folder types */}
           {canAddTemplate && (
@@ -495,6 +520,29 @@ const FolderItem: React.FC<FolderItemProps> = ({ item }) => {
         </DialogContent>
       </Dialog>
 
+    <Dialog open={isDeleteFileDialogOpen} onOpenChange={setIsDeleteFileDialogOpen}>
+      <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete File</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{item.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setIsDeleteFileDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button className="w-full" variant="destructive" onClick={handleDeleteFile}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    
       {item.mimeType?.startsWith('image') && item.path && (
         <ImageViewer
           isOpen={isImageViewerOpen}

@@ -294,6 +294,32 @@ const useContentStore = create<ContentState & ContentActions>((set, get) => ({
     }
   },
 
+  deleteFile: async (repoId: number, mediaId: string) => {
+    set({ isProcessing: true, error: null });
+    try {
+      await contentApi.deleteFile(repoId, mediaId);
+
+      // Remove from local state immediately — no need to refetch
+      set(state => {
+        const filtered = state.items.filter(item => item.id !== mediaId);
+        return {
+          items: filtered,
+          sortedItems: sortItems(filtered, state.sortBy, state.sortOrder),
+          selectedItems: state.selectedItems.filter(id => id !== mediaId),
+          isProcessing: false,
+        };
+      });
+
+      toast.success('File deleted successfully');
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Delete file failed',
+        isProcessing: false,
+        display_toast: true,
+      });
+    }
+  },
+
   deleteNode: async (id: string) => {
     set({ isProcessing: true, error: null });
     try {
