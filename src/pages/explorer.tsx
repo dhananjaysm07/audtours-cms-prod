@@ -737,10 +737,10 @@ const ContentExplorer = () => {
               variant="secondary"
               className="min-w-0"
               onClick={() => setIsOpenBulkImportDialog(true)}
-              disabled={
-                !isFileUploadAvailable({ type: currentSegment.type }) ||
-                currentSegment.repoType !== REPOSITORY_KINDS.AUDIO
-              }
+              // disabled={
+              //   !isFileUploadAvailable({ type: currentSegment.type }) ||
+              //   currentSegment.repoType !== REPOSITORY_KINDS.AUDIO
+              // }
               title="Bulk Import"
             >
               <Files size={16} />
