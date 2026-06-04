@@ -17,8 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useContentStore } from '@/store/useContentStore';
-import { contentApi } from '@/lib/api';
-import type { Repository, Node } from '@/types';
+import { contentApi, languageApi } from '@/lib/api';
+import type { Repository, Node, Language } from '@/types';
 import { REPOSITORY_KINDS, FOLDER_ITEM_TYPE } from '@/types';
 import {
   Upload,
@@ -39,26 +39,29 @@ export interface BulkImportDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
-interface RepoOption {
+// Existing audio repo keyed by languageId (null = no language)
+interface ExistingRepo {
   repoId: string;
   languageId: number | null;
-  languageName: string | null;
 }
 
-// A selectable node entry — label shows the full breadcrumb path
+// A discovered node that can receive audio uploads
 interface NodeOption {
-  nodeId: string;
-  nodeName: string;
-  pathLabel: string; // e.g. "Paris > City Map > Eiffel Tower > Stop 1"
-  repos: RepoOption[];
+  nodeId: string; // numeric node id as string
+  pathLabel: string; // "Location › Map › Spot › Stop"
+  repos: ExistingRepo[]; // already-existing audio repos on this node
 }
+
+// NO_LANG sentinel for the language selector
+const NO_LANG_VALUE = '__none__';
 
 interface FileRow {
   id: string;
   file: File;
   name: string;
   selectedNodeId: string;
-  selectedRepoId: string;
+  // languageId as string for <Select>; NO_LANG_VALUE means no language
+  selectedLanguageId: string;
   status: 'pending' | 'uploading' | 'success' | 'error';
   errorMessage?: string;
 }
@@ -69,10 +72,10 @@ const formatBytes = (bytes: number) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-// ── Recursive tree walker ────────────────────────────────────────────────────
-// Walks the full Location > Map > Spot > Stop hierarchy under `nodeId`,
-// collecting every node that owns at least one audio repository.
-async function collectAudioNodes(
+// ── Recursive subtree walker ─────────────────────────────────────────────────
+// Collects every node in the Location › Map › Spot › Stop tree that either
+// already has an audio repo or is a valid stop (can have one created).
+async function collectNodes(
   nodeId: string,
   ancestorPath: string,
 ): Promise<NodeOption[]> {
@@ -90,30 +93,35 @@ async function collectAudioNodes(
 
   const results: NodeOption[] = [];
 
-  // Audio repos directly on this node
-  const audioRepos = repositories.filter(
-    r => r.type === REPOSITORY_KINDS.AUDIO,
-  );
-  if (audioRepos.length > 0) {
+  const audioRepos: ExistingRepo[] = repositories
+    .filter(r => r.type === REPOSITORY_KINDS.AUDIO)
+    .map(r => ({
+      repoId: String(r.id),
+      languageId: r.languageId ?? null,
+    }));
+
+  // Include this node if it has audio repos OR if it's a leaf (stop/spot)
+  // that can accept uploads — we'll create the repo on demand if needed.
+  // We include it whenever it has at least some audio repos already or is
+  // a terminal node (no more children after fetch — handled by recursion).
+  // Simplest rule: always include the node if it has audio repos or children
+  // that might have them. We include it with whatever repos exist; the upload
+  // logic will create a new repo when the chosen language has none.
+  if (audioRepos.length > 0 || children.length === 0) {
+    // Only include if it can meaningfully accept audio (has existing repo or is a leaf)
     results.push({
       nodeId,
-      nodeName: ancestorPath.split(' › ').pop() ?? ancestorPath,
       pathLabel: ancestorPath,
-      repos: audioRepos.map(r => ({
-        repoId: String(r.id),
-        languageId: r.languageId ?? null,
-        languageName: r.language ?? null,
-      })),
+      repos: audioRepos,
     });
   }
 
-  // Recurse into children
   await Promise.all(
     children.map(async child => {
       const childPath = ancestorPath
         ? `${ancestorPath} › ${child.name}`
         : child.name;
-      const nested = await collectAudioNodes(String(child.id), childPath);
+      const nested = await collectNodes(String(child.id), childPath);
       results.push(...nested);
     }),
   );
@@ -133,65 +141,73 @@ export const BulkImportDialog = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [nodeOptions, setNodeOptions] = useState<NodeOption[]>([]);
-  const [isLoadingNodes, setIsLoadingNodes] = useState(false);
+  const [languages, setLanguages] = useState<Language[]>([]);
+  const [isLoadingMeta, setIsLoadingMeta] = useState(false);
+
+  // repoId cache: "nodeId:languageId" → repoId (populated as repos are created)
+  const repoCache = useRef<Record<string, string>>({});
 
   const { uploadFile, currentPath } = useContentStore();
   const currentSegment = currentPath[currentPath.length - 1];
 
-  // ── Build node tree on open ────────────────────────────────────────────────
+  // ── Load node tree + languages on open ──────────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
 
+    repoCache.current = {};
+
     const load = async () => {
-      setIsLoadingNodes(true);
+      setIsLoadingMeta(true);
       try {
-        const isAtRepo =
-          currentSegment.type === FOLDER_ITEM_TYPE.REPOSITORY &&
-          currentSegment.repoType === REPOSITORY_KINDS.AUDIO;
+        const [langResp, nodes] = await Promise.all([
+          languageApi.getLanguages(),
+          (async () => {
+            const isAtRepo =
+              currentSegment.type === FOLDER_ITEM_TYPE.REPOSITORY &&
+              currentSegment.repoType === REPOSITORY_KINDS.AUDIO;
 
-        if (isAtRepo) {
-          // Already inside an audio repo — single implicit target
-          const repoId = currentSegment.id.split(':')[1];
-          setNodeOptions([
-            {
-              nodeId: currentSegment.id,
-              nodeName: currentSegment.name,
-              pathLabel: currentSegment.name,
-              repos: [{ repoId, languageId: null, languageName: null }],
-            },
-          ]);
-          return;
-        }
+            if (isAtRepo) {
+              const repoId = currentSegment.id.split(':')[1];
+              return [
+                {
+                  nodeId: currentSegment.id,
+                  pathLabel: currentSegment.name,
+                  repos: [{ repoId, languageId: null }],
+                },
+              ] as NodeOption[];
+            }
 
-        // Walk the full subtree from current node
-        const built = await collectAudioNodes(
-          currentSegment.id,
-          currentSegment.name,
-        );
-        setNodeOptions(built);
+            return collectNodes(currentSegment.id, currentSegment.name);
+          })(),
+        ]);
+
+        const activeLanguages = langResp.data.filter(l => l.isActive);
+        setLanguages(activeLanguages);
+
+        // Seed the repo cache with already-known repos
+        nodes.forEach(n => {
+          n.repos.forEach(r => {
+            const key = `${n.nodeId}:${r.languageId ?? 'null'}`;
+            repoCache.current[key] = r.repoId;
+          });
+        });
+
+        setNodeOptions(nodes);
       } catch {
-        toast.error('Failed to load audio repositories');
+        toast.error('Failed to load repositories or languages');
       } finally {
-        setIsLoadingNodes(false);
+        setIsLoadingMeta(false);
       }
     };
 
     load();
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const getDefaults = useCallback(
-    (opts = nodeOptions) => {
-      const first = opts[0];
-      return {
-        selectedNodeId: first?.nodeId ?? '',
-        selectedRepoId: first?.repos[0]?.repoId ?? '',
-      };
-    },
-    [nodeOptions],
-  );
+  const defaultNodeId = nodeOptions[0]?.nodeId ?? '';
+  const defaultLangId = NO_LANG_VALUE;
 
-  // ── File handling ──────────────────────────────────────────────────────────
-  const isTypeAllowed = (file: File) => file.type.startsWith(AUDIO_MIME_PREFIX);
+  // ── File helpers ───────────────────────────────────────────────────────────
+  const isTypeAllowed = (f: File) => f.type.startsWith(AUDIO_MIME_PREFIX);
 
   const addFiles = useCallback(
     (files: File[]) => {
@@ -202,7 +218,6 @@ export const BulkImportDialog = ({
 
       setRows(prev => {
         const existingNames = new Set(prev.map(r => r.file.name));
-        const defaults = getDefaults();
         const newRows: FileRow[] = valid
           .filter(f => !existingNames.has(f.name))
           .map(file => ({
@@ -210,12 +225,13 @@ export const BulkImportDialog = ({
             file,
             name: file.name.replace(/\.[^/.]+$/, ''),
             status: 'pending',
-            ...defaults,
+            selectedNodeId: defaultNodeId,
+            selectedLanguageId: defaultLangId,
           }));
         return [...prev, ...newRows];
       });
     },
-    [getDefaults],
+    [defaultNodeId], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -232,25 +248,50 @@ export const BulkImportDialog = ({
   const removeRow = (id: string) =>
     setRows(prev => prev.filter(r => r.id !== id));
 
-  const updateName = (id: string, value: string) =>
-    setRows(prev => prev.map(r => (r.id === id ? { ...r, name: value } : r)));
-
-  const handleNodeChange = (rowId: string, nodeId: string) => {
-    const node = nodeOptions.find(n => n.nodeId === nodeId);
-    const firstRepo = node?.repos[0]?.repoId ?? '';
+  const updateField = (
+    id: string,
+    field: 'name' | 'selectedNodeId' | 'selectedLanguageId',
+    value: string,
+  ) =>
     setRows(prev =>
-      prev.map(r =>
-        r.id === rowId
-          ? { ...r, selectedNodeId: nodeId, selectedRepoId: firstRepo }
-          : r,
+      prev.map(r => (r.id === id ? { ...r, [field]: value } : r)),
+    );
+
+  // ── Resolve (or create) the repo for a node + language combo ─────────────
+  const resolveRepoId = async (
+    nodeId: string,
+    languageIdStr: string,
+  ): Promise<string> => {
+    const languageId =
+      languageIdStr === NO_LANG_VALUE ? null : Number(languageIdStr);
+    const cacheKey = `${nodeId}:${languageId ?? 'null'}`;
+
+    if (repoCache.current[cacheKey]) return repoCache.current[cacheKey];
+
+    // Need to create a new audio repo for this node + language
+    const resp = await contentApi.createRepository(
+      Number(nodeId),
+      REPOSITORY_KINDS.AUDIO,
+      languageId ?? undefined,
+    );
+
+    const newRepoId = String(resp.data.id);
+    repoCache.current[cacheKey] = newRepoId;
+
+    // Also add to nodeOptions so the UI is consistent
+    setNodeOptions(prev =>
+      prev.map(n =>
+        n.nodeId === nodeId
+          ? {
+              ...n,
+              repos: [...n.repos, { repoId: newRepoId, languageId }],
+            }
+          : n,
       ),
     );
-  };
 
-  const handleRepoChange = (rowId: string, repoId: string) =>
-    setRows(prev =>
-      prev.map(r => (r.id === rowId ? { ...r, selectedRepoId: repoId } : r)),
-    );
+    return newRepoId;
+  };
 
   // ── Upload ─────────────────────────────────────────────────────────────────
   const handleUploadAll = async () => {
@@ -267,13 +308,21 @@ export const BulkImportDialog = ({
       );
 
       try {
+        // Step 1: get or create the repo
+        const repoId = await resolveRepoId(
+          row.selectedNodeId,
+          row.selectedLanguageId,
+        );
+
+        // Step 2: upload the file
         await uploadFile({
           file: row.file,
           name: row.name || row.file.name,
           position: null,
-          repoId: row.selectedRepoId,
+          repoId,
           force_position: false,
         });
+
         setRows(prev =>
           prev.map(r => (r.id === row.id ? { ...r, status: 'success' } : r)),
         );
@@ -301,6 +350,8 @@ export const BulkImportDialog = ({
     setRows([]);
     setUploadProgress(0);
     setNodeOptions([]);
+    setLanguages([]);
+    repoCache.current = {};
     setIsOpen(false);
   };
 
@@ -311,13 +362,13 @@ export const BulkImportDialog = ({
   const pendingCount = rows.filter(r => r.status === 'pending').length;
   const successCount = rows.filter(r => r.status === 'success').length;
   const errorCount = rows.filter(r => r.status === 'error').length;
-  const noTargets = !isLoadingNodes && nodeOptions.length === 0;
+  const noTargets = !isLoadingMeta && nodeOptions.length === 0;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-5xl w-full max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
-        {/* ── Header (sticky) ── */}
+        {/* Header */}
         <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Upload size={18} />
@@ -325,23 +376,23 @@ export const BulkImportDialog = ({
           </DialogTitle>
         </DialogHeader>
 
-        {/* ── Scrollable body ── */}
+        {/* Scrollable body */}
         <div className="flex flex-col gap-4 px-6 py-4 overflow-y-auto flex-1 min-h-0">
-          {/* Loading / no-targets notice */}
-          {isLoadingNodes && (
-            <div className="flex items-center gap-2 text-sm text-neutral-400 py-1">
+          {isLoadingMeta && (
+            <div className="flex items-center gap-2 text-sm text-neutral-400">
               <Loader2 size={14} className="animate-spin" />
-              Scanning audio repositories…
-            </div>
-          )}
-          {noTargets && (
-            <div className="flex items-center gap-2 text-sm text-orange-600 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3">
-              <AlertCircle size={14} />
-              No audio repositories found under this location.
+              Scanning repositories &amp; languages…
             </div>
           )}
 
-          {/* Drop zone — hidden while uploading */}
+          {noTargets && (
+            <div className="flex items-center gap-2 text-sm text-orange-600 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3">
+              <AlertCircle size={14} />
+              No audio-capable nodes found under this location.
+            </div>
+          )}
+
+          {/* Drop zone */}
           {!isUploading && (
             <div
               className={cn(
@@ -349,7 +400,7 @@ export const BulkImportDialog = ({
                 isDragging
                   ? 'border-purple-500 bg-purple-50'
                   : 'border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50',
-                (noTargets || isLoadingNodes) &&
+                (noTargets || isLoadingMeta) &&
                   'pointer-events-none opacity-40',
               )}
               onClick={() => fileInputRef.current?.click()}
@@ -386,53 +437,53 @@ export const BulkImportDialog = ({
             </div>
           )}
 
-          {/* ── File table (scrollable independently) ── */}
+          {/* File table */}
           {rows.length > 0 && (
             <div className="border rounded-lg overflow-hidden flex flex-col min-h-0">
-              {/* Fixed column header */}
+              {/* Sticky header */}
               <div className="bg-neutral-50 border-b shrink-0">
                 <table className="w-full text-sm table-fixed">
                   <colgroup>
-                    <col className="w-8" />
-                    <col /> {/* file — flexible */}
-                    <col className="w-44" />
-                    <col className="w-48" />
-                    <col className="w-36" />
-                    <col className="w-24" />
-                    <col className="w-8" />
+                    <col className="w-8" /> {/* icon */}
+                    <col /> {/* file — flex */}
+                    <col className="w-40" /> {/* display name */}
+                    <col className="w-52" /> {/* node */}
+                    <col className="w-36" /> {/* language */}
+                    <col className="w-24" /> {/* status */}
+                    <col className="w-8" /> {/* remove */}
                   </colgroup>
                   <thead>
                     <tr>
                       <th className="px-3 py-2" />
-                      <th className="text-left px-3 py-2 font-medium text-neutral-600">
+                      <th className="text-left px-3 py-2 font-medium text-neutral-600 text-xs">
                         File
                       </th>
-                      <th className="text-left px-3 py-2 font-medium text-neutral-600">
+                      <th className="text-left px-3 py-2 font-medium text-neutral-600 text-xs">
                         Display Name
                       </th>
-                      <th className="text-left px-3 py-2 font-medium text-neutral-600">
+                      <th className="text-left px-3 py-2 font-medium text-neutral-600 text-xs">
                         Node
                       </th>
-                      <th className="text-left px-3 py-2 font-medium text-neutral-600">
+                      <th className="text-left px-3 py-2 font-medium text-neutral-600 text-xs">
                         Language
                       </th>
-                      <th className="text-left px-3 py-2 font-medium text-neutral-600">
+                      <th className="text-left px-3 py-2 font-medium text-neutral-600 text-xs">
                         Status
                       </th>
-                      <th className="px-3 py-2" />
+                      <th />
                     </tr>
                   </thead>
                 </table>
               </div>
 
-              {/* Scrollable rows */}
-              <div className="overflow-y-auto max-h-64">
+              {/* Scrollable rows — capped so header/footer always visible */}
+              <div className="overflow-y-auto max-h-72">
                 <table className="w-full text-sm table-fixed">
                   <colgroup>
                     <col className="w-8" />
                     <col />
-                    <col className="w-44" />
-                    <col className="w-48" />
+                    <col className="w-40" />
+                    <col className="w-52" />
                     <col className="w-36" />
                     <col className="w-24" />
                     <col className="w-8" />
@@ -485,7 +536,9 @@ export const BulkImportDialog = ({
                           <td className="px-3 py-2">
                             <Input
                               value={row.name}
-                              onChange={e => updateName(row.id, e.target.value)}
+                              onChange={e =>
+                                updateField(row.id, 'name', e.target.value)
+                              }
                               disabled={isLocked}
                               className="h-7 text-xs px-2"
                               placeholder="Display name"
@@ -496,7 +549,9 @@ export const BulkImportDialog = ({
                           <td className="px-3 py-2">
                             <Select
                               value={row.selectedNodeId}
-                              onValueChange={v => handleNodeChange(row.id, v)}
+                              onValueChange={v =>
+                                updateField(row.id, 'selectedNodeId', v)
+                              }
                               disabled={isLocked || nodeOptions.length <= 1}
                             >
                               <SelectTrigger
@@ -523,30 +578,29 @@ export const BulkImportDialog = ({
                             </Select>
                           </td>
 
-                          {/* Language selector */}
+                          {/* Language selector — global list */}
                           <td className="px-3 py-2">
-                            {nodeOpt && nodeOpt.repos.length > 1 ? (
-                              <Select
-                                value={row.selectedRepoId}
-                                onValueChange={v => handleRepoChange(row.id, v)}
-                                disabled={isLocked}
-                              >
-                                <SelectTrigger className="h-7 text-xs">
-                                  <SelectValue placeholder="Language" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {nodeOpt.repos.map(r => (
-                                    <SelectItem key={r.repoId} value={r.repoId}>
-                                      {r.languageName ?? 'Default'}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <span className="text-xs text-neutral-500 px-1">
-                                {nodeOpt?.repos[0]?.languageName ?? '—'}
-                              </span>
-                            )}
+                            <Select
+                              value={row.selectedLanguageId}
+                              onValueChange={v =>
+                                updateField(row.id, 'selectedLanguageId', v)
+                              }
+                              disabled={isLocked}
+                            >
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue placeholder="Language" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={NO_LANG_VALUE}>
+                                  No language
+                                </SelectItem>
+                                {languages.map(l => (
+                                  <SelectItem key={l.id} value={String(l.id)}>
+                                    {l.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </td>
 
                           {/* Status */}
@@ -628,7 +682,7 @@ export const BulkImportDialog = ({
           )}
         </div>
 
-        {/* ── Footer (sticky) ── */}
+        {/* Footer */}
         <div className="px-6 py-4 border-t shrink-0 flex items-center justify-between gap-3">
           <span className="text-xs text-neutral-400">
             {rows.length > 0
@@ -654,7 +708,7 @@ export const BulkImportDialog = ({
                   pendingCount === 0 ||
                   isUploading ||
                   noTargets ||
-                  isLoadingNodes
+                  isLoadingMeta
                 }
               >
                 {isUploading ? (
@@ -679,11 +733,7 @@ export const BulkImportDialog = ({
                   setRows(prev =>
                     prev.map(r =>
                       r.status === 'error'
-                        ? {
-                            ...r,
-                            status: 'pending',
-                            errorMessage: undefined,
-                          }
+                        ? { ...r, status: 'pending', errorMessage: undefined }
                         : r,
                     ),
                   )
